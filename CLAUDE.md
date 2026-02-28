@@ -84,6 +84,57 @@ closes #1
 - Always include `refs #N` or `closes #N` — warn if missing
 - One logical change per commit
 
+## README Guidelines
+
+Features in `README.md` should describe what the user **experiences**, not how the
+system works internally. Avoid mentioning implementation details (polling intervals,
+process management, config merge strategy, script names, etc.) in the Features section.
+When adding or changing a feature, update the relevant README section to reflect the
+user-visible change — but keep descriptions high-level and benefit-focused.
+
+## Notification Philosophy
+
+Notifications should be **rare, high-signal, and non-intrusive**. The goal is to
+surface moments when Claude needs your attention — not to narrate every tool call.
+
+There are exactly two notification events:
+
+- **`long_running`** — fired when a prompt **completes** after running longer than the
+  effective threshold. The threshold is resolved per-channel: use the channel's
+  `long_running_threshold` if set, otherwise fall back to `long_running.threshold_seconds`
+  (global default: 120 s). Setting any threshold to `0` fires on every completion for
+  that channel. This lets vim notifications fire sooner than OS notifications.
+- **`error`** — fired when a tool call exits non-zero and Claude reports it.
+
+Do not add notifications for routine events (every tool use, every file read, status
+updates, etc.). If a new event is proposed, ask: "would this become noise within a day
+of normal use?" If yes, it should not be a default-on notification.
+
+## Dependencies
+
+When adding a new OS-level dependency:
+1. Add a check block (and an install branch) for it in `install.sh`'s `check_deps()`.
+2. Add a row to the requirements table in `README.md`.
+
+Neovim plugin dependencies (airline, lualine, nvim-notify, etc.) are **not managed by
+`install.sh`** and must never be added to it. Users install these via their own plugin
+manager. Document optional integrations in the section below.
+
+## Optional Neovim Integrations
+
+Planned integrations with common Neovim plugins. All are opt-in; the plugin works
+standalone via the built-in `nvim --server` notification bridge.
+
+| Plugin | Integration | Issue |
+|---|---|---|
+| `nvim-notify` / `vim-notify` | Route vim notifications through nvim-notify for styled popups | TBD |
+| `vim-airline` | Expose a status segment function for airline's right section | TBD |
+| `lualine.nvim` | Provide a lualine component for claude state + last-status dot | TBD |
+| `heirline.nvim` | Provide a heirline component table for full customisation | TBD |
+
+When implementing an integration, add it as an optional `require()` in
+`lua/claude-watcher/init.lua` with a graceful fallback if the plugin is absent.
+
 ## Architecture
 
 - **Hook dispatcher pattern** — a single entry-point script reads `hook_event_name` from

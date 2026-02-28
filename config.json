@@ -14,26 +14,30 @@
     "sound": {
       "enabled": true,
       "volume": 0.7,
-      "on_complete": true,
-      "on_error": true,
-      "on_long_running": true
+      "path": null,
+      "path_overrides": {
+        "long_running": null,
+        "error": null
+      },
+      "on_long_running": true,
+      "on_error": false,
+      "long_running_threshold": null
     },
     "os": {
       "enabled": true,
-      "on_complete": true,
+      "on_long_running": true,
       "on_error": true,
-      "on_long_running": true
+      "long_running_threshold": null
     },
     "vim": {
       "enabled": true,
-      "on_complete": true,
+      "on_long_running": true,
       "on_error": true,
-      "on_long_running": true
+      "long_running_threshold": null
     }
   },
   "long_running": {
-    "enabled": true,
-    "threshold_seconds": 60
+    "threshold_seconds": 120
   },
   "statusline": {
     "enabled": true,

@@ -1,0 +1,15 @@
+{
+  "session_id": "abc123",
+  "state": "working",
+  "directory": "/home/user/my-project",
+  "branch": "feat/3-hook-dispatcher",
+  "git_staged": 2,
+  "git_modified": 1,
+  "context_pct": 42,
+  "cost_usd": 0.042,
+  "duration_seconds": 12,
+  "prompt_start_epoch": 1700000000,
+  "last_tool_name": "Bash",
+  "last_tool_exit_code": null,
+  "watcher_pid": 98765
+}

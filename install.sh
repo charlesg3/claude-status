@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# install.sh — set up claude-watcher OS dependencies and git hooks
+# install.sh — check / install claude-watcher OS dependencies and git hooks
 #
-# Safe to re-run. Detects macOS vs Linux and installs what is needed.
+# Safe to re-run.
 #
 # Usage:
-#   bash install.sh           # install deps + hooks
-#   bash install.sh --hooks   # install git hooks only (skip OS deps)
-#   bash install.sh --deps    # install OS deps only (skip hooks)
+#   bash install.sh               # check deps + set up git hooks (no package install)
+#   bash install.sh --install     # install any missing OS deps, then set up git hooks
+#   bash install.sh --deps        # check/install deps only (skip git hooks)
+#   bash install.sh --hooks       # set up git hooks only (skip dep check)
+#
+# Note: Neovim plugin dependencies (airline, lualine, etc.) are intentionally
+# excluded and must be managed by the user via their Neovim plugin manager.
 
 set -euo pipefail
 
@@ -27,10 +31,15 @@ is_macos() { [[ "$(uname)" == "Darwin" ]]; }
 is_linux() { [[ "$(uname)" == "Linux" ]]; }
 
 # ---------------------------------------------------------------------------
-# Dependency checks
+# Dependency check (and optional install)
+#
+# $1 — "install" to install missing packages; anything else = check only
 # ---------------------------------------------------------------------------
 check_deps() {
-  header "Checking dependencies"
+  local do_install=false
+  [[ "${1:-}" == "install" ]] && do_install=true
+
+  header "Dependencies"
 
   local missing=()
 
@@ -50,11 +59,11 @@ check_deps() {
       warn "afplay not found (unexpected on macOS)"
     fi
   elif is_linux; then
-    if command -v paplay &>/dev/null; then
-      ok "paplay (sound)"
+    if command -v mpg123 &>/dev/null; then
+      ok "mpg123 (sound)"
     else
-      warn "paplay not found"
-      missing+=(pulseaudio-utils)
+      warn "mpg123 not found"
+      missing+=(mpg123)
     fi
   fi
 
@@ -74,32 +83,37 @@ check_deps() {
     fi
   fi
 
-  # nvim — optional
+  # nvim — optional, not installed by this script
   if command -v nvim &>/dev/null; then
     ok "nvim $(nvim --version | head -1) (optional)"
   else
-    warn "nvim not found — vim notifications will be disabled"
+    warn "nvim not found — vim notifications disabled (install via your package manager)"
   fi
 
-  if [[ ${#missing[@]} -gt 0 ]]; then
+  if [[ ${#missing[@]} -eq 0 ]]; then
+    return 0
+  fi
+
+  if $do_install; then
     header "Installing missing dependencies"
     if is_macos; then
       if command -v brew &>/dev/null; then
-        brew install "${missing[@]}"
-        ok "installed: ${missing[*]}"
+        brew install "${missing[@]}" && ok "installed: ${missing[*]}"
       else
-        err "Homebrew not found. Install missing packages manually: ${missing[*]}"
+        err "Homebrew not found — install missing packages manually: ${missing[*]}"
         return 1
       fi
     elif is_linux; then
       if command -v apt-get &>/dev/null; then
-        sudo apt-get install -y "${missing[@]}"
-        ok "installed: ${missing[*]}"
+        sudo apt-get install -y "${missing[@]}" && ok "installed: ${missing[*]}"
       else
-        err "apt-get not found. Install missing packages manually: ${missing[*]}"
+        err "apt-get not found — install missing packages manually: ${missing[*]}"
         return 1
       fi
     fi
+  else
+    warn "missing packages: ${missing[*]}"
+    warn "re-run with --install to install them automatically"
   fi
 }
 
@@ -176,13 +190,19 @@ scaffold_log_dir() {
 main() {
   local do_deps=true
   local do_hooks=true
+  local do_install=false
 
   for arg in "$@"; do
     case "$arg" in
-      --deps)  do_hooks=false ;;
-      --hooks) do_deps=false ;;
+      --install) do_install=true ;;
+      --deps)    do_hooks=false ;;
+      --hooks)   do_deps=false ;;
       -h|--help)
-        printf 'Usage: %s [--deps] [--hooks]\n' "$(basename "$0")"
+        printf 'Usage: %s [--install] [--deps] [--hooks]\n' "$(basename "$0")"
+        printf '  (no flags)   check deps + set up git hooks\n'
+        printf '  --install    also install any missing OS packages\n'
+        printf '  --deps       dep check/install only (skip git hooks)\n'
+        printf '  --hooks      git hooks only (skip dep check)\n'
         exit 0
         ;;
       *)
@@ -194,7 +214,7 @@ main() {
 
   printf '\n\033[1mclaude-watcher install\033[0m\n'
 
-  $do_deps  && check_deps
+  $do_deps  && check_deps "$($do_install && echo install || echo check)"
   $do_hooks && install_hooks
   scaffold_user_config
   scaffold_log_dir

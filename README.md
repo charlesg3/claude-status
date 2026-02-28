@@ -1,47 +1,25 @@
 # claude-watcher
 
-claude-watcher is a Claude Code hook dispatcher, background session watcher, status bar
-formatter, and Neovim plugin — all in one cohesive system. It connects Claude's hook
-events to your editor, terminal, and OS so you always know exactly what Claude is doing,
-even when you've switched away from its window.
+claude-watcher keeps you informed while Claude works — without requiring you to watch
+the terminal. When a long task finishes or something goes wrong, it tells you through
+whatever channel you prefer: a desktop notification, a sound, or an alert in your editor.
 
-When Claude finishes a long task, claude-watcher sends an OS notification, plays a
-configurable sound, and optionally posts a message directly to the Neovim buffer that
-owns the session. A background watcher process polls Claude's session state file at
-200 ms intervals for event responsiveness and 1 s intervals for status bar updates,
-writing formatted state that your shell prompt or tmux status line can read at any time.
-
-The system is designed to be fully standalone — it works without Neovim and without
-the status bar. Notifications (OS, sound, Neovim, terminal bell) work independently.
-The optional Neovim plugin adds session-aware buffer tracking, `WinEnter`/`WinLeave`-based
-"claude mode" detection, and in-editor notifications via the Neovim RPC server.
-The status bar is disabled via `statusline.enabled: false` in your config.
+It works without Neovim and without a status bar. You can use as much or as little of
+it as you want.
 
 ## Features
 
-- **Single hook dispatcher** — one script handles every Claude hook event; easy to chain
-  with your own scripts
-- **Background watcher** — monitors session liveness at 200 ms; self-terminates when
-  Claude exits; writes structured state to `/tmp`
-- **Status bar formatter** — reads state file and outputs a formatted, component-togglable
-  status string for shell prompts or tmux
-- **OS notifications** — `osascript` on macOS, `notify-send` on Linux; configurable per
-  event type (complete, error, long-running)
-- **Sound notifications** — `afplay` on macOS, `paplay` on Linux; per-event and
-  per-volume control
-- **Vim notifications** — posts messages to the owning Neovim instance via `--server` /
-  `remote-expr`; no extra daemon required
-- **Long-running detection** — notifies when a prompt exceeds a configurable threshold
-  (default 60 s)
-- **Idempotent watcher startup** — every hook run calls the watcher start routine; if
-  already running it exits silently; if a stale PID is found (crash detected) it logs,
-  optionally notifies, and restarts
-- **Config merging** — `config.json` in the repo holds defaults; user overrides live in
-  `~/.config/claude-watcher/config.json`
-- **Neovim plugin** — session-to-buffer mapping via PPID ancestry walk, claude mode
-  detection, standard `g:` config vars
-- **Continuous versioning** — PRs labelled `minor` bump the minor version and reset
-  patch; unlabelled PRs bump the patch
+- **Desktop notifications** — native OS alerts when a task completes or errors; works on
+  macOS and Linux; each channel gracefully skips if its tool is not installed
+- **Sound alerts** — plays a sound file or picks a random sound from a folder; different
+  sounds per event; adjustable volume
+- **Neovim integration** — in-editor alerts posted to the Neovim instance that owns the
+  Claude session; detects the right buffer automatically; "claude mode" API for statuslines
+- **Optional status bar** — shows session state, git context, cost, and context usage;
+  component-based so you enable only what you want; works with tmux or shell prompts
+- **Highly configurable** — every channel can be tuned independently; per-channel
+  thresholds let Neovim alert sooner than OS notifications; user config is never
+  overwritten by updates
 
 ## Requirements
 
@@ -50,7 +28,7 @@ The status bar is disabled via `statusline.enabled: false` in your config.
 | `bash` 4+ | All scripts | pre-installed | pre-installed |
 | `jq` | JSON config parsing | `brew install jq` | `apt install jq` |
 | `afplay` | Sound notifications | pre-installed | — |
-| `paplay` | Sound notifications | — | `apt install pulseaudio-utils` |
+| `mpg123` | Sound notifications | — | `apt install mpg123` |
 | `libnotify` (`notify-send`) | OS notifications | — | `apt install libnotify-bin` |
 | `nvim` | Vim notifications + plugin | optional | optional |
 
@@ -61,8 +39,8 @@ Run `install.sh` to check and install OS dependencies automatically.
 ### Without Neovim (standalone)
 
 ```sh
-git clone https://github.com/charlesg3/claude-watcher ~/.config/claude-watcher
-cd ~/.config/claude-watcher
+git clone https://github.com/charlesg3/claude-watcher ~/src/claude-watcher
+cd ~/src/claude-watcher
 bash install.sh
 ```
 
@@ -136,19 +114,18 @@ arrays and scalars are replaced wholesale.
 | `watcher.display_interval_ms` | `1000` | Poll interval for status bar refresh |
 | `notifications.sound.enabled` | `true` | Master switch for sound |
 | `notifications.sound.volume` | `0.7` | Volume (0.0–1.0) |
-| `notifications.sound.on_complete` | `true` | Sound on task complete |
+| `notifications.sound.on_long_running` | `true` | Sound when prompt finishes above threshold |
 | `notifications.sound.on_error` | `true` | Sound on error |
-| `notifications.sound.on_long_running` | `true` | Sound when threshold exceeded |
+| `notifications.sound.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
 | `notifications.os.enabled` | `true` | Master switch for OS notifications |
-| `notifications.os.on_complete` | `true` | OS notify on complete |
+| `notifications.os.on_long_running` | `true` | OS notify when prompt finishes above threshold |
 | `notifications.os.on_error` | `true` | OS notify on error |
-| `notifications.os.on_long_running` | `true` | OS notify when threshold exceeded |
+| `notifications.os.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
 | `notifications.vim.enabled` | `true` | Master switch for Vim notifications |
-| `notifications.vim.on_complete` | `true` | Vim notify on complete |
+| `notifications.vim.on_long_running` | `true` | Vim notify when prompt finishes above threshold |
 | `notifications.vim.on_error` | `true` | Vim notify on error |
-| `notifications.vim.on_long_running` | `true` | Vim notify when threshold exceeded |
-| `long_running.enabled` | `true` | Enable long-running detection |
-| `long_running.threshold_seconds` | `60` | Seconds before a prompt is "long-running" |
+| `notifications.vim.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
+| `long_running.threshold_seconds` | `120` | Global default: seconds after which a completed prompt notifies; `0` = always |
 | `statusline.enabled` | `true` | Master switch for the status bar; disable to use notifications only |
 | `statusline.components.*` | (all enabled) | Toggle individual status bar components |
 | `statusline.icons.*` | (see config.json) | Unicode icons used in the status bar |
@@ -158,13 +135,18 @@ arrays and scalars are replaced wholesale.
 
 ```json
 {
-  "long_running": { "threshold_seconds": 30 },
+  "long_running": { "threshold_seconds": 120 },
   "notifications": {
     "sound": { "enabled": false },
-    "os":    { "on_complete": false }
+    "os":    { "long_running_threshold": 120 },
+    "vim":   { "long_running_threshold": 30 }
   }
 }
 ```
+
+This disables sound entirely, uses the global 120 s threshold for OS notifications, but
+notifies Neovim after only 30 s — useful when you are in the editor and want earlier
+feedback without being spammed by OS popups for quick tasks.
 
 ## Configuring Claude Hooks
 
@@ -278,8 +260,8 @@ Install `libnotify-bin` (`apt install libnotify-bin`) and ensure a notification 
 (e.g. `dunst`, `mako`) is running.
 
 **No sound on Linux**
-Install `pulseaudio-utils` (`apt install pulseaudio-utils`) and verify PulseAudio or
-PipeWire is running (`pactl info`).
+Install `mpg123` (`apt install mpg123`) and verify it can play a file directly:
+`mpg123 /path/to/sound.mp3`.
 
 **Neovim notifications not appearing**
 The plugin requires Neovim to be started with `--listen` or for `$NVIM` to be set.

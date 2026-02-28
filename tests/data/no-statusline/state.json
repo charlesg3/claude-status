@@ -1,0 +1,15 @@
+{
+  "session_id": "abc129",
+  "state": "ready",
+  "directory": "/home/user/my-project",
+  "branch": "main",
+  "git_staged": 0,
+  "git_modified": 0,
+  "context_pct": 10,
+  "cost_usd": 0.005,
+  "duration_seconds": 2,
+  "prompt_start_epoch": 1700000600,
+  "last_tool_name": null,
+  "last_tool_exit_code": null,
+  "watcher_pid": 98771
+}

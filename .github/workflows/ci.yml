@@ -18,10 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            jq \
-            libnotify-bin \
-            pulseaudio-utils
+          bash install.sh --install --deps
 
       - name: Install Neovim
         uses: rhysd/action-setup-vim@v1

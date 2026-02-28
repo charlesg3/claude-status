@@ -1,0 +1,15 @@
+{
+  "session_id": "abc128",
+  "state": "working",
+  "directory": "/home/user/my-project",
+  "branch": "feat/4-long-running",
+  "git_staged": 0,
+  "git_modified": 5,
+  "context_pct": 91,
+  "cost_usd": 1.24,
+  "duration_seconds": 183,
+  "prompt_start_epoch": 1700000500,
+  "last_tool_name": "Write",
+  "last_tool_exit_code": 0,
+  "watcher_pid": 98770
+}
