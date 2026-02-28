@@ -1,6 +1,6 @@
-# claude-watcher
+# claude-status
 
-claude-watcher keeps you informed while Claude works — without requiring you to watch
+claude-status keeps you informed while Claude works — without requiring you to watch
 the terminal. When a long task finishes or something goes wrong, it tells you through
 whatever channel you prefer: a desktop notification, a sound, or an alert in your editor.
 
@@ -39,30 +39,30 @@ Run `install.sh` to check and install OS dependencies automatically.
 ### Without Neovim (standalone)
 
 ```sh
-git clone https://github.com/charlesg3/claude-watcher ~/src/claude-watcher
-cd ~/src/claude-watcher
+git clone https://github.com/charlesg3/claude-status ~/src/claude-status
+cd ~/src/claude-status
 bash install.sh
 ```
 
 Add the hooks to `~/.claude/settings.json` (see [Configuring Claude Hooks](#configuring-claude-hooks) below).
 
-Optionally edit `~/.config/claude-watcher/config.json` to override defaults.
+Optionally edit `~/.config/claude-status/config.json` to override defaults.
 
 ### With Neovim — vim-plug
 
 ```vim
-Plug 'charlesg3/claude-watcher', {'rtp': '.'}
+Plug 'charlesg3/claude-status', {'rtp': '.'}
 ```
 
 ### With Neovim — lazy.nvim
 
 ```lua
 {
-  'charlesg3/claude-watcher',
+  'charlesg3/claude-status',
   config = function()
     -- optional: override defaults before setup
-    vim.g.claude_watcher_notify_vim = true
-    require('claude-watcher').setup()
+    vim.g.claude_status_notify_vim = true
+    require('claude-status').setup()
   end,
 }
 ```
@@ -71,8 +71,8 @@ Plug 'charlesg3/claude-watcher', {'rtp': '.'}
 
 ```lua
 use {
-  'charlesg3/claude-watcher',
-  config = function() require('claude-watcher').setup() end,
+  'charlesg3/claude-status',
+  config = function() require('claude-status').setup() end,
 }
 ```
 
@@ -80,7 +80,7 @@ use {
 
 ```sh
 cd ~/.config/nvim  # or your nvim config root
-git submodule add https://github.com/charlesg3/claude-watcher bundle/claude-watcher
+git submodule add https://github.com/charlesg3/claude-status bundle/claude-status
 ```
 
 Then in your `init.vim`:
@@ -89,14 +89,14 @@ Then in your `init.vim`:
 execute pathogen#infect()
 ```
 
-The `plugin/claude-watcher.vim` file loads automatically via pathogen.
+The `plugin/claude-status.vim` file loads automatically via pathogen.
 
 ## Configuration
 
 Configuration is loaded by merging two JSON files:
 
 1. `config.json` in the repo — global defaults, version-controlled
-2. `~/.config/claude-watcher/config.json` — user overrides, never overwritten by updates
+2. `~/.config/claude-status/config.json` — user overrides, never overwritten by updates
 
 Keys present in the user file take precedence. Nested objects are merged one level deep;
 arrays and scalars are replaced wholesale.
@@ -105,10 +105,10 @@ arrays and scalars are replaced wholesale.
 
 | Key | Default | Description |
 |---|---|---|
-| `project_name` | `"claude-watcher"` | Internal identifier |
-| `config_dir` | `"~/.config/claude-watcher"` | Where user config and assets live |
+| `project_name` | `"claude-status"` | Internal identifier |
+| `config_dir` | `"~/.config/claude-status"` | Where user config and assets live |
 | `state_dir` | `"/tmp"` | Where session state files are written |
-| `log.file` | `"~/.local/share/claude-watcher/watcher.log"` | Watcher log path |
+| `log.file` | `"~/.local/share/claude-status/claude-status.log"` | Log path |
 | `log.max_lines` | `500` | Log is trimmed to this many lines on rotation |
 | `watcher.event_interval_ms` | `200` | Poll interval for hook events |
 | `watcher.display_interval_ms` | `1000` | Poll interval for status bar refresh |
@@ -148,10 +148,25 @@ This disables sound entirely, uses the global 120 s threshold for OS notificatio
 notifies Neovim after only 30 s — useful when you are in the editor and want earlier
 feedback without being spammed by OS popups for quick tasks.
 
+## Notification Events
+
+claude-status fires notifications on exactly two events:
+
+| Event | When it fires |
+|---|---|
+| `long_running` | A prompt **completes** after running longer than the effective threshold. Set any channel's threshold to `0` to notify on every completion for that channel. Default threshold: 120 s. |
+| `error` | A tool call exits non-zero and Claude reports it as a failure. |
+
+These events are intentionally minimal. The goal is to surface moments when Claude needs
+your attention, not to narrate every action. See the Configuration section above for
+per-channel threshold overrides.
+
 ## Configuring Claude Hooks
 
 Add the following to `~/.claude/settings.json`. Every hook event points to the same
 dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
+
+Adjust the path to match wherever you cloned the repo (the example uses `~/src/claude-status`).
 
 ```json
 {
@@ -160,7 +175,7 @@ dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh" }
+          { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
@@ -168,7 +183,7 @@ dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh" }
+          { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
@@ -176,7 +191,7 @@ dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh" }
+          { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
@@ -184,7 +199,7 @@ dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh" }
+          { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
@@ -192,7 +207,7 @@ dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh" }
+          { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ]
@@ -207,7 +222,7 @@ run after the built-in handling. The same hook input JSON is forwarded to each s
 stdin.
 
 ```json
-{ "type": "command", "command": "~/.config/claude-watcher/hooks/claude-hook.sh /path/to/my-script.sh" }
+{ "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh /path/to/my-script.sh" }
 ```
 
 Your script receives the raw Claude hook JSON on stdin and can do anything with it.
@@ -216,43 +231,34 @@ Exit codes from chained scripts are logged but do not affect Claude's hook proce
 ## Status Bar Setup
 
 `scripts/statusline.sh` reads the session state file and prints a one-line formatted
-string. Integrate it into your shell prompt or tmux status:
+string suitable for tmux or a shell prompt right side.
 
-**tmux** (`~/.tmux.conf`):
-
-```
-set -g status-right '#(~/.config/claude-watcher/scripts/statusline.sh)'
-set -g status-interval 1
-```
-
-**zsh prompt** (`~/.zshrc`):
-
-```sh
-_claude_status() { ~/.config/claude-watcher/scripts/statusline.sh 2>/dev/null; }
-RPROMPT='$(_claude_status)'
-```
+The status bar reads from a per-session state file in `/tmp`. When running a single
+Claude session, a global fallback file is supported so the status bar always shows the
+most recent session. Multi-session support (showing the state for the session tied to the
+current window) is a known open problem — see the tracking issues for current status.
 
 Toggle components in `config.json` under `statusline.components` — set `"enabled": false`
 for any segment you don't want.
 
 ## Neovim Plugin Configuration
 
-Set any of these before `require('claude-watcher').setup()` (or before the plugin loads
+Set any of these before `require('claude-status').setup()` (or before the plugin loads
 via pathogen/vim-plug):
 
 | Variable | Default | Description |
 |---|---|---|
-| `g:claude_watcher_enabled` | `1` | Master enable/disable |
-| `g:claude_watcher_notify_vim` | `1` | Show in-editor notifications |
-| `g:claude_watcher_notify_level` | `'info'` | Minimum level: `'info'`, `'warn'`, `'error'` |
-| `g:claude_watcher_claude_mode_hl` | `'StatusLine'` | Highlight group for claude mode indicator |
-| `g:claude_watcher_server_socket` | `''` | Override nvim server socket path |
-| `g:claude_watcher_state_dir` | `'/tmp'` | Must match `state_dir` in config.json |
+| `g:claude_status_enabled` | `1` | Master enable/disable |
+| `g:claude_status_notify_vim` | `1` | Show in-editor notifications |
+| `g:claude_status_notify_level` | `'info'` | Minimum level: `'info'`, `'warn'`, `'error'` |
+| `g:claude_status_claude_mode_hl` | `'StatusLine'` | Highlight group for claude mode indicator |
+| `g:claude_status_server_socket` | `''` | Override nvim server socket path |
+| `g:claude_status_state_dir` | `'/tmp'` | Must match `state_dir` in config.json |
 
 ## Troubleshooting
 
 **Watcher is not starting**
-Check the log at `~/.local/share/claude-watcher/watcher.log`. Ensure `jq` is installed
+Check the log at `~/.local/share/claude-status/claude-status.log`. Ensure `jq` is installed
 and that the hooks script is executable (`chmod +x hooks/claude-hook.sh`).
 
 **No OS notifications on Linux**
@@ -265,7 +271,7 @@ Install `mpg123` (`apt install mpg123`) and verify it can play a file directly:
 
 **Neovim notifications not appearing**
 The plugin requires Neovim to be started with `--listen` or for `$NVIM` to be set.
-Check that `g:claude_watcher_notify_vim` is `1` and that the server socket path is
+Check that `g:claude_status_notify_vim` is `1` and that the server socket path is
 discoverable. Run `:echo serverlist()` in Neovim to verify.
 
 **Hook not firing**
@@ -274,7 +280,7 @@ Test manually: `echo '{"hook_event_name":"Stop","session_id":"test"}' | bash hoo
 
 **Status bar shows nothing**
 Ensure a watcher process is running for your session. The hook dispatcher starts it
-automatically on the first hook event. Check `/tmp/claude-watcher-*.json` for state files.
+automatically on the first hook event. Check `/tmp/claude-status-*.json` for state files.
 
 ## License
 

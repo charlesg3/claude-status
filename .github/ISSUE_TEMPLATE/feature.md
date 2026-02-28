@@ -22,7 +22,6 @@ assignees: ''
 <!-- Check all that apply -->
 
 - [ ] vim-plugin
-- [ ] watcher
 - [ ] status-bar
 - [ ] hooks
 - [ ] config

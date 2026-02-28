@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-tests.sh — run the full claude-watcher test suite
+# run-tests.sh — run the full claude-status test suite
 #
 # Usage:
 #   bash scripts/run-tests.sh              # run all tests

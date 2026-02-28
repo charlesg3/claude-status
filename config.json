@@ -1,14 +1,10 @@
 {
-  "project_name": "claude-watcher",
-  "config_dir": "~/.config/claude-watcher",
+  "project_name": "claude-status",
+  "config_dir": "~/.config/claude-status",
   "state_dir": "/tmp",
   "log": {
-    "file": "~/.local/share/claude-watcher/watcher.log",
+    "file": "~/.local/share/claude-status/claude-status.log",
     "max_lines": 500
-  },
-  "watcher": {
-    "event_interval_ms": 200,
-    "display_interval_ms": 1000
   },
   "notifications": {
     "sound": {

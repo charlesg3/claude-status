@@ -10,4 +10,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial project setup
 
-[Unreleased]: https://github.com/charlesg3/claude-watcher/compare/HEAD...HEAD
+[Unreleased]: https://github.com/charlesg3/claude-status/compare/HEAD...HEAD

@@ -1,11 +1,11 @@
-# claude-watcher
+# claude-status
 
-AI coding guide for the claude-watcher project.
+AI coding guide for the claude-status project.
 
 ## Project Overview
 
-claude-watcher is a Claude Code hook dispatcher, background session watcher, status bar
-formatter, and Neovim plugin. It connects Claude's hook events to OS notifications,
+claude-status is a Claude Code hook dispatcher, status bar formatter, and Neovim plugin.
+It connects Claude's hook events to OS notifications,
 sounds, and the Neovim RPC server so the user always knows what Claude is doing, even
 when they've switched away from its window.
 
@@ -14,12 +14,11 @@ when they've switched away from its window.
 | Path | Purpose |
 |---|---|
 | `hooks/claude-hook.sh` | Single dispatcher for all Claude hook events; chainable |
-| `scripts/watcher.sh` | Background process; monitors session liveness; self-terminates |
 | `scripts/statusline.sh` | Reads state file; outputs formatted status string |
 | `scripts/lib/config.sh` | Loads and merges global + user config.json |
 | `config.json` | Global defaults (version-controlled) |
-| `lua/claude-watcher/init.lua` | Neovim plugin — session/buffer mapping, claude mode |
-| `plugin/claude-watcher.vim` | Neovim plugin entry point (autoloads init.lua) |
+| `lua/claude-status/init.lua` | Neovim plugin — session/buffer mapping, claude mode |
+| `plugin/claude-status.vim` | Neovim plugin entry point (autoloads init.lua) |
 | `install.sh` | OS dependency detection and setup |
 | `tests/test-statusline.sh` | Unit tests for status bar output |
 | `tests/mock-event.sh` | Fire synthetic hook events for manual testing |
@@ -29,13 +28,13 @@ when they've switched away from its window.
 
 ## Development Setup
 
-This plugin lives at `nvim/bundle/claude-watcher/` inside the dotfiles nvim submodule.
+This plugin lives at `nvim/bundle/claude-status/` inside the dotfiles nvim submodule.
 During active development it is NOT treated as a git submodule — it is a plain git repo
 checked out directly. `update.sh` skips it. Once development churn settles, it will be
 added as a proper submodule.
 
 ```sh
-cd ~/.config/nvim/bundle/claude-watcher   # or wherever you checked it out
+cd ~/.config/nvim/bundle/claude-status   # or wherever you checked it out
 bash install.sh                           # install OS deps
 ```
 
@@ -133,7 +132,7 @@ standalone via the built-in `nvim --server` notification bridge.
 | `heirline.nvim` | Provide a heirline component table for full customisation | TBD |
 
 When implementing an integration, add it as an optional `require()` in
-`lua/claude-watcher/init.lua` with a graceful fallback if the plugin is absent.
+`lua/claude-status/init.lua` with a graceful fallback if the plugin is absent.
 
 ## Architecture
 
@@ -141,32 +140,34 @@ When implementing an integration, add it as an optional `require()` in
   stdin JSON and calls the appropriate handler function. Extra positional args are
   forwarded as chained scripts.
 - **State files in /tmp** — each Claude session writes a JSON state file at
-  `/tmp/claude-watcher-SESSION_ID.json`. The watcher and statusline both read this file.
+  `/tmp/claude-status-SESSION_ID.json`. The statusline reads this file.
   Writing is atomic (write to `.tmp`, then `mv`).
 - **Config merge strategy** — `scripts/lib/config.sh` reads `config.json` (repo
-  defaults), then deep-merges `~/.config/claude-watcher/config.json` (user overrides)
+  defaults), then deep-merges `~/.config/claude-status/config.json` (user overrides)
   using `jq * reduce`. User values win at every key.
-- **Idempotent watcher startup** — every hook run unconditionally calls the watcher start
-  routine. The routine checks the PID file: no PID → start the watcher; PID alive →
-  exit silently; PID present but process dead → log a crash, optionally notify via
-  context stdout + OS + vim, clear the stale PID, then start a fresh watcher.
 - **Nvim remote-expr bridge** — `scripts/lib/notify.sh` discovers the Neovim server
   socket for the owning session and calls `nvim --server $socket --remote-expr` to post
   messages without a persistent daemon.
+- **Winbar timer** — the Lua plugin uses `vim.loop.new_timer()` to drive the Neovim
+  display refresh loop independently of hook events.
+- **Config precedence** — settings resolution order (highest wins): 1)
+  `vim.g.claude_status_*` variables (Neovim-only); 2)
+  `~/.config/claude-status/config.json` (user overrides); 3) `config.json` in repo
+  (shipped defaults).
 
 ## Config System
 
 | File | Role |
 |---|---|
 | `config.json` (repo) | Shipped defaults; do not edit for personal preferences |
-| `~/.config/claude-watcher/config.json` | User overrides; never overwritten by install/update |
+| `~/.config/claude-status/config.json` | User overrides; never overwritten by install/update |
 
 The merge is performed with `jq`. Nested objects are merged one level deep; scalars and
 arrays are replaced by the user value.
 
 ## State Files
 
-Each running Claude session produces `/tmp/claude-watcher-SESSION_ID.json`:
+Each running Claude session produces `/tmp/claude-status-SESSION_ID.json`:
 
 ```json
 {
@@ -179,13 +180,12 @@ Each running Claude session produces `/tmp/claude-watcher-SESSION_ID.json`:
   "context_tokens": 14200,
   "cost_usd": 0.042,
   "prompt_start_epoch": 1700000000,
-  "duration_seconds": 12,
-  "watcher_pid": 98765
+  "duration_seconds": 12
 }
 ```
 
-Fields are updated by the watcher process and by hook events. The statusline script
-reads this file and formats it for display.
+Fields are updated by hook events. The statusline script reads this file and formats it
+for display.
 
 ## Testing
 

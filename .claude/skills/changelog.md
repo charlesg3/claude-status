@@ -40,8 +40,8 @@ according to the project's continuous-release versioning rules.
       (today's date).
    b. Insert a fresh empty `## [Unreleased]` section above it.
    c. Update the compare URL at the bottom of the file:
-      `[NEW_VERSION]: https://github.com/charlesg3/claude-watcher/compare/vOLD...vNEW`
-      `[Unreleased]: https://github.com/charlesg3/claude-watcher/compare/vNEW...HEAD`
+      `[NEW_VERSION]: https://github.com/charlesg3/claude-status/compare/vOLD...vNEW`
+      `[Unreleased]: https://github.com/charlesg3/claude-status/compare/vNEW...HEAD`
 
 7. Show the diff to the user for confirmation before writing.
 

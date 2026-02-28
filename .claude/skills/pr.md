@@ -6,7 +6,7 @@ and a completed test plan.
 ## PR title format
 
 ```
-[{feat|bug|chore}/KEBAB-DESCRIPTION] short description in imperative mood
+`[{feat|bug|chore}/KEBAB-DESCRIPTION]` short description in imperative mood
 ```
 
 Same format as the commit subject line. ≤ 70 characters total.
@@ -90,7 +90,7 @@ Same format as the commit subject line. ≤ 70 characters total.
 12. Create the PR:
     ```
     gh pr create \
-      --title "[feat/hook-dispatcher] add single entry-point hook dispatcher" \
+      --title "\`[feat/hook-dispatcher]\` add single entry-point hook dispatcher" \
       --label "minor" \
       --body "$(cat <<'EOF'
     ...body...

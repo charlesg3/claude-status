@@ -15,7 +15,7 @@ Before staging anything, check whether CHANGELOG.md has content under
 ## Commit message format
 
 ```
-[{feat|bug|chore}/KEBAB-DESCRIPTION] short description in imperative mood
+`[{feat|bug|chore}/KEBAB-DESCRIPTION]` short description in imperative mood
 
 Overview paragraph: what is being changed and why, with enough context
 for someone reading the log to understand the change without diffing.
@@ -37,7 +37,7 @@ closes #N    (this commit finishes the issue)
 **Rules for the subject line:**
 - Format must be `[type/kebab-description] imperative summary`
 - `type` is one of: `feat`, `bug`, `chore`
-- `KEBAB-DESCRIPTION` matches the branch name suffix (e.g. branch `feat/3-hook-dispatcher` → `[feat/hook-dispatcher]`)
+- `KEBAB-DESCRIPTION` matches the branch name suffix (e.g. branch `feat/3-hook-dispatcher` → `` `[feat/hook-dispatcher]` ``)
 - Total first line ≤ 72 characters
 - No period at the end
 
@@ -47,21 +47,27 @@ closes #N    (this commit finishes the issue)
 
 2. Verify CHANGELOG.md [Unreleased] has content (see above).
 
-3. Draft the commit message following the format above.
+3. Check whether `README.md` needs updating. Update it in the same commit if the
+   changes affect any of the following:
+   - User-visible behaviour or workflow
+   - Config keys (added, removed, renamed, or changed defaults)
+   - OS-level dependencies (add a row to the Requirements table and update `install.sh`)
 
-4. Warn if there is no `refs #N` or `closes #N` — every commit should correspond
+4. Draft the commit message following the format above.
+
+5. Warn if there is no `refs #N` or `closes #N` — every commit should correspond
    to a GitHub issue. If no issue exists, prompt the user to create one first
    with `/add-issue`.
 
-5. Show the staged file list and draft message to the user for confirmation.
+6. Show the staged file list and draft message to the user for confirmation.
 
-6. Stage specific files by name — never `git add -A` or `git add .` without review.
+7. Stage specific files by name — never `git add -A` or `git add .` without review.
    Always include CHANGELOG.md if it has been updated.
 
-7. Commit using a HEREDOC to preserve formatting:
+8. Commit using a HEREDOC to preserve formatting:
    ```
    git commit -m "$(cat <<'EOF'
-   [feat/hook-dispatcher] add single entry-point hook dispatcher
+   `[feat/hook-dispatcher]` add single entry-point hook dispatcher
 
    Overview here.
 
@@ -74,7 +80,7 @@ closes #N    (this commit finishes the issue)
    )"
    ```
 
-8. Run `git status` after to confirm the working tree is clean.
+9. Run `git status` after to confirm the working tree is clean.
 
 ## Rules
 

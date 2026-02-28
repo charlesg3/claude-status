@@ -1,6 +1,6 @@
 # Skill: test
 
-Run the claude-watcher test suite and report results.
+Run the claude-status test suite and report results.
 
 ## Steps
 

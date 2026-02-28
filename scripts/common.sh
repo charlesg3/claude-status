@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# scripts/common.sh — shared helpers for all claude-watcher scripts
+# scripts/common.sh — shared helpers for all claude-status scripts
 #
 # SOURCE this file; do not execute it directly.
 #
 # COMPONENT IDENTITY
 #   Each script that sources this file should declare its name at the top:
-#     CLAUDE_WATCHER_COMPONENT="watcher"
+#     CLAUDE_STATUS_COMPONENT="hooks"
 #   This appears in every log line written by log_info/log_warn/log_error.
 #
 # FUNCTION GROUPS
@@ -69,19 +69,19 @@ clear_spin()  { echo -ne "\r\033[2K"; }
 
 # ---------------------------------------------------------------------------
 # Structured log helpers
-# (watcher.sh, hooks/claude-hook.sh, scripts/lib/*.sh)
+# (hooks/claude-hook.sh, scripts/lib/*.sh)
 #
 # Log format:
-#   2026-01-15T12:34:56Z [session:abc123] [watcher] INFO  message
+#   2026-01-15T12:34:56Z [session:abc123] [hooks] INFO  message
 #
-# CLAUDE_WATCHER_COMPONENT — set by each sourcing script (default: "unknown")
-# CLAUDE_SESSION_ID        — set by hooks from Claude's env, or passed explicitly
-# CLAUDE_WATCHER_LOG       — override the log file path
-# CLAUDE_WATCHER_LOG_MAX_LINES — trim threshold (default: 500)
+# CLAUDE_STATUS_COMPONENT — set by each sourcing script (default: "unknown")
+# CLAUDE_SESSION_ID       — set by hooks from Claude's env, or passed explicitly
+# CLAUDE_STATUS_LOG       — override the log file path
+# CLAUDE_STATUS_LOG_MAX_LINES — trim threshold (default: 500)
 # ---------------------------------------------------------------------------
-CLAUDE_WATCHER_LOG="${CLAUDE_WATCHER_LOG:-$HOME/.local/share/claude-watcher/watcher.log}"
-CLAUDE_WATCHER_COMPONENT="${CLAUDE_WATCHER_COMPONENT:-unknown}"
-CLAUDE_WATCHER_LOG_MAX_LINES="${CLAUDE_WATCHER_LOG_MAX_LINES:-500}"
+CLAUDE_STATUS_LOG="${CLAUDE_STATUS_LOG:-$HOME/.local/share/claude-status/claude-status.log}"
+CLAUDE_STATUS_COMPONENT="${CLAUDE_STATUS_COMPONENT:-unknown}"
+CLAUDE_STATUS_LOG_MAX_LINES="${CLAUDE_STATUS_LOG_MAX_LINES:-500}"
 
 _log_line() {
   local level="$1"; shift
@@ -90,35 +90,35 @@ _log_line() {
   ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")"
   local line
   printf -v line "%s [session:%s] [%s] %-5s %s" \
-    "$ts" "$session" "$CLAUDE_WATCHER_COMPONENT" "$level" "$*"
-  echo "$line" >> "$CLAUDE_WATCHER_LOG"
+    "$ts" "$session" "$CLAUDE_STATUS_COMPONENT" "$level" "$*"
+  echo "$line" >> "$CLAUDE_STATUS_LOG"
 }
 
 _rotate_log() {
-  [[ -f "$CLAUDE_WATCHER_LOG" ]] || return 0
+  [[ -f "$CLAUDE_STATUS_LOG" ]] || return 0
   local lines
-  lines="$(wc -l < "$CLAUDE_WATCHER_LOG")"
-  if (( lines > CLAUDE_WATCHER_LOG_MAX_LINES )); then
-    local tmp="${CLAUDE_WATCHER_LOG}.tmp"
-    tail -n "$CLAUDE_WATCHER_LOG_MAX_LINES" "$CLAUDE_WATCHER_LOG" > "$tmp" \
-      && mv "$tmp" "$CLAUDE_WATCHER_LOG"
+  lines="$(wc -l < "$CLAUDE_STATUS_LOG")"
+  if (( lines > CLAUDE_STATUS_LOG_MAX_LINES )); then
+    local tmp="${CLAUDE_STATUS_LOG}.tmp"
+    tail -n "$CLAUDE_STATUS_LOG_MAX_LINES" "$CLAUDE_STATUS_LOG" > "$tmp" \
+      && mv "$tmp" "$CLAUDE_STATUS_LOG"
   fi
 }
 
 log_info() {
-  mkdir -p "$(dirname "$CLAUDE_WATCHER_LOG")"
+  mkdir -p "$(dirname "$CLAUDE_STATUS_LOG")"
   _log_line "INFO" "$@"
   _rotate_log
 }
 
 log_warn() {
-  mkdir -p "$(dirname "$CLAUDE_WATCHER_LOG")"
+  mkdir -p "$(dirname "$CLAUDE_STATUS_LOG")"
   _log_line "WARN" "$@"
   _rotate_log
 }
 
 log_error() {
-  mkdir -p "$(dirname "$CLAUDE_WATCHER_LOG")"
+  mkdir -p "$(dirname "$CLAUDE_STATUS_LOG")"
   _log_line "ERROR" "$@"
   _rotate_log
 }

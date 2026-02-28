@@ -10,6 +10,5 @@
   "duration_seconds": 183,
   "prompt_start_epoch": 1700000500,
   "last_tool_name": "Write",
-  "last_tool_exit_code": 0,
-  "watcher_pid": 98770
+  "last_tool_exit_code": 0
 }

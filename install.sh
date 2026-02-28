@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — check / install claude-watcher OS dependencies and git hooks
+# install.sh — check / install claude-status OS dependencies and git hooks
 #
 # Safe to re-run.
 #
@@ -156,30 +156,30 @@ HOOK
 scaffold_user_config() {
   header "User config"
 
-  local user_config_dir="$HOME/.config/claude-watcher"
+  local user_config_dir="$HOME/.config/claude-status"
   local user_config="$user_config_dir/config.json"
 
   if [[ -f "$user_config" ]]; then
-    ok "~/.config/claude-watcher/config.json already exists — not overwriting"
+    ok "~/.config/claude-status/config.json already exists — not overwriting"
     return 0
   fi
 
   mkdir -p "$user_config_dir"
   cat > "$user_config" <<'JSON'
 {
-  "_comment": "User overrides for claude-watcher. Keys here take precedence over config.json in the repo.",
-  "_docs": "https://github.com/charlesg3/claude-watcher#configuration"
+  "_comment": "User overrides for claude-status. Keys here take precedence over config.json in the repo.",
+  "_docs": "https://github.com/charlesg3/claude-status#configuration"
 }
 JSON
 
-  ok "created ~/.config/claude-watcher/config.json"
+  ok "created ~/.config/claude-status/config.json"
 }
 
 # ---------------------------------------------------------------------------
 # Log directory
 # ---------------------------------------------------------------------------
 scaffold_log_dir() {
-  local log_dir="$HOME/.local/share/claude-watcher"
+  local log_dir="$HOME/.local/share/claude-status"
   mkdir -p "$log_dir"
   ok "log directory: $log_dir"
 }
@@ -212,7 +212,7 @@ main() {
     esac
   done
 
-  printf '\n\033[1mclaude-watcher install\033[0m\n'
+  printf '\n\033[1mclaude-status install\033[0m\n'
 
   $do_deps  && check_deps "$($do_install && echo install || echo check)"
   $do_hooks && install_hooks
@@ -222,7 +222,7 @@ main() {
   printf '\n\033[32mDone.\033[0m\n\n'
   printf 'Next steps:\n'
   printf '  1. Configure hooks in ~/.claude/settings.json (see README.md)\n'
-  printf '  2. Edit ~/.config/claude-watcher/config.json to override defaults\n\n'
+  printf '  2. Edit ~/.config/claude-status/config.json to override defaults\n\n'
 }
 
 main "$@"

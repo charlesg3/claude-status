@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# pre-commit.sh — staged-file checks for claude-watcher commits
+# pre-commit.sh — staged-file checks for claude-status commits
 #
-# CLAUDE_WATCHER_COMPONENT="pre-commit"
+# CLAUDE_STATUS_COMPONENT="pre-commit"
 #
 # Functions (also sourced by run-tests.sh):
 #   check_bash_syntax   bash -n on every staged .sh file
@@ -11,7 +11,7 @@
 # Run standalone:  bash scripts/pre-commit.sh
 # Sourced by:      scripts/run-tests.sh
 
-CLAUDE_WATCHER_COMPONENT="pre-commit"
+CLAUDE_STATUS_COMPONENT="pre-commit"
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/common.sh

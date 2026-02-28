@@ -10,6 +10,5 @@
   "duration_seconds": 19,
   "prompt_start_epoch": 1700000400,
   "last_tool_name": "Bash",
-  "last_tool_exit_code": 1,
-  "watcher_pid": 98769
+  "last_tool_exit_code": 1
 }
