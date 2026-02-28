@@ -1,0 +1,160 @@
+# claude-watcher
+
+AI coding guide for the claude-watcher project.
+
+## Project Overview
+
+claude-watcher is a Claude Code hook dispatcher, background session watcher, status bar
+formatter, and Neovim plugin. It connects Claude's hook events to OS notifications,
+sounds, and the Neovim RPC server so the user always knows what Claude is doing, even
+when they've switched away from its window.
+
+## Repository Structure
+
+| Path | Purpose |
+|---|---|
+| `hooks/claude-hook.sh` | Single dispatcher for all Claude hook events; chainable |
+| `scripts/watcher.sh` | Background process; monitors session liveness; self-terminates |
+| `scripts/statusline.sh` | Reads state file; outputs formatted status string |
+| `scripts/lib/config.sh` | Loads and merges global + user config.json |
+| `config.json` | Global defaults (version-controlled) |
+| `lua/claude-watcher/init.lua` | Neovim plugin — session/buffer mapping, claude mode |
+| `plugin/claude-watcher.vim` | Neovim plugin entry point (autoloads init.lua) |
+| `install.sh` | OS dependency detection and setup |
+| `tests/test-statusline.sh` | Unit tests for status bar output |
+| `tests/mock-event.sh` | Fire synthetic hook events for manual testing |
+| `tests/test-vim.lua` | Headless Neovim tests for the Lua plugin |
+| `CHANGELOG.md` | Keepachangelog format; updated on every PR merge |
+| `CLAUDE.md` | This file |
+
+## Development Setup
+
+This plugin lives at `nvim/bundle/claude-watcher/` inside the dotfiles nvim submodule.
+During active development it is NOT treated as a git submodule — it is a plain git repo
+checked out directly. `update.sh` skips it. Once development churn settles, it will be
+added as a proper submodule.
+
+```sh
+cd ~/.config/nvim/bundle/claude-watcher   # or wherever you checked it out
+bash install.sh                           # install OS deps
+```
+
+## Branch & PR Naming
+
+- Feature branches: `feat/issue#-short-kebab-desc`  (e.g. `feat/3-watcher-health-check`)
+- Bug branches:     `bug/issue#-short-kebab-desc`   (e.g. `bug/7-state-file-race`)
+- PRs must reference the issue they close: **"Closes #N"** in the PR body
+- Commits should reference issues: `refs #N` or `closes #N`
+
+## Versioning
+
+This project uses **continuous patch/minor releases** — every merged PR produces a new
+version tag.
+
+- By default, merging a PR bumps the **patch** version (e.g. `0.1.0` → `0.1.1`).
+- If the PR is labelled **`minor`**, the **minor** version is bumped and patch resets to
+  zero (e.g. `0.1.3` → `0.2.0`).
+- Major version bumps are manual.
+- Update `CHANGELOG.md` before merging: add an entry under `[Unreleased]` with the
+  correct version heading and date. Use the `/changelog` skill to draft it.
+
+## Commit Style
+
+- No "Co-Authored-By: Claude" lines
+- Imperative mood, present tense ("add watcher health check", not "added")
+- Reference issues in commit messages: `refs #N` or `closes #N`
+- One logical change per commit
+
+## Architecture
+
+- **Hook dispatcher pattern** — a single entry-point script reads `hook_event_name` from
+  stdin JSON and calls the appropriate handler function. Extra positional args are
+  forwarded as chained scripts.
+- **State files in /tmp** — each Claude session writes a JSON state file at
+  `/tmp/claude-watcher-SESSION_ID.json`. The watcher and statusline both read this file.
+  Writing is atomic (write to `.tmp`, then `mv`).
+- **Config merge strategy** — `scripts/lib/config.sh` reads `config.json` (repo
+  defaults), then deep-merges `~/.config/claude-watcher/config.json` (user overrides)
+  using `jq * reduce`. User values win at every key.
+- **Idempotent watcher startup** — every hook run unconditionally calls the watcher start
+  routine. The routine checks the PID file: no PID → start the watcher; PID alive →
+  exit silently; PID present but process dead → log a crash, optionally notify via
+  context stdout + OS + vim, clear the stale PID, then start a fresh watcher.
+- **Nvim remote-expr bridge** — `scripts/lib/notify.sh` discovers the Neovim server
+  socket for the owning session and calls `nvim --server $socket --remote-expr` to post
+  messages without a persistent daemon.
+
+## Config System
+
+| File | Role |
+|---|---|
+| `config.json` (repo) | Shipped defaults; do not edit for personal preferences |
+| `~/.config/claude-watcher/config.json` | User overrides; never overwritten by install/update |
+
+The merge is performed with `jq`. Nested objects are merged one level deep; scalars and
+arrays are replaced by the user value.
+
+## State Files
+
+Each running Claude session produces `/tmp/claude-watcher-SESSION_ID.json`:
+
+```json
+{
+  "session_id": "abc123",
+  "state": "working",
+  "directory": "/home/user/project",
+  "branch": "feat/3-watcher-health",
+  "git_staged": 2,
+  "git_modified": 1,
+  "context_tokens": 14200,
+  "cost_usd": 0.042,
+  "prompt_start_epoch": 1700000000,
+  "duration_seconds": 12,
+  "watcher_pid": 98765
+}
+```
+
+Fields are updated by the watcher process and by hook events. The statusline script
+reads this file and formats it for display.
+
+## Testing
+
+```sh
+# Status bar unit tests
+bash tests/test-statusline.sh
+
+# List available mock events
+bash tests/mock-event.sh --list
+
+# Fire a specific mock event
+bash tests/mock-event.sh Stop
+
+# Headless Neovim plugin tests
+nvim --headless -l tests/test-vim.lua
+```
+
+Tests are in the `tests/` directory. Mock events are JSON payloads that replicate what
+Claude would send via stdin to the hook dispatcher. Headless Neovim tests load the
+plugin and exercise the Lua API without a GUI.
+
+## Skills
+
+| Skill | Command | Purpose |
+|---|---|---|
+| add-issue | `/add-issue` | Create a new GitHub issue with labels |
+| issues | `/issues` | List open issues grouped by component |
+| commit | `/commit` | Stage and commit with proper message format |
+| pr | `/pr` | Create a PR with correct naming, labels, and issue reference |
+| changelog | `/changelog` | Update CHANGELOG.md from commits and issues |
+| test | `/test` | Run the test suite and report results |
+
+## Adding New Features
+
+1. Create a GitHub issue with `/add-issue` — note the issue number N
+2. Create a branch: `git checkout -b feat/N-short-desc`
+3. Implement the feature, writing tests alongside the code
+4. Run `bash tests/test-statusline.sh` and `nvim --headless -l tests/test-vim.lua`
+5. Update `CHANGELOG.md` with `/changelog`
+6. Commit with `/commit` — include `closes #N` in the message
+7. Open a PR with `/pr` — body must contain "Closes #N"; add label `minor` if appropriate
+8. Merge the PR; the version bumps automatically per the versioning rules above

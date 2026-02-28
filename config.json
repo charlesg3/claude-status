@@ -1,0 +1,80 @@
+{
+  "project_name": "claude-watcher",
+  "config_dir": "~/.config/claude-watcher",
+  "state_dir": "/tmp",
+  "log": {
+    "file": "~/.local/share/claude-watcher/watcher.log",
+    "max_lines": 500
+  },
+  "watcher": {
+    "event_interval_ms": 200,
+    "display_interval_ms": 1000
+  },
+  "notifications": {
+    "sound": {
+      "enabled": true,
+      "volume": 0.7,
+      "on_complete": true,
+      "on_error": true,
+      "on_long_running": true
+    },
+    "os": {
+      "enabled": true,
+      "on_complete": true,
+      "on_error": true,
+      "on_long_running": true
+    },
+    "vim": {
+      "enabled": true,
+      "on_complete": true,
+      "on_error": true,
+      "on_long_running": true
+    }
+  },
+  "long_running": {
+    "enabled": true,
+    "threshold_seconds": 60
+  },
+  "statusline": {
+    "enabled": true,
+    "layout": [
+      "state", "directory", "branch", "git_status", "last_status",
+      "spacer",
+      "context", "cost", "duration"
+    ],
+    "components": {
+      "state":       { "enabled": true, "script": "components/state.sh" },
+      "directory":   { "enabled": true, "script": "components/directory.sh" },
+      "branch":      { "enabled": true, "script": "components/branch.sh" },
+      "git_status":  { "enabled": true, "script": "components/git-status.sh" },
+      "last_status": { "enabled": true, "script": "components/last-status.sh" },
+      "context":     { "enabled": true, "script": "components/context.sh" },
+      "cost":        { "enabled": true, "script": "components/cost.sh" },
+      "duration":    { "enabled": true, "script": "components/duration.sh" }
+    },
+    "icons": {
+      "working":   "↻",
+      "ready":     "●",
+      "directory": "📁",
+      "branch":    "🌿",
+      "staged":    "+",
+      "modified":  "*",
+      "cost":      "💰",
+      "duration":  "⏱️",
+      "dot":       "●",
+      "small_dot": "•"
+    },
+    "colors": {
+      "working":       "#6FC1FF",
+      "ready":         "#55B96D",
+      "error":         "#FF2C6D",
+      "warning":       "#FFB86C",
+      "branch":        "#B1B9F5",
+      "dim":           "#676B79",
+      "last_status_ok":      "#55B96D",
+      "last_status_fail":    "#FF2C6D",
+      "last_status_unknown": "#676B79",
+      "reset":         ""
+    }
+  }
+}
