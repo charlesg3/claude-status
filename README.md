@@ -110,8 +110,6 @@ arrays and scalars are replaced wholesale.
 | `state_dir` | `"/tmp"` | Where session state files are written |
 | `log.file` | `"~/.local/share/claude-status/claude-status.log"` | Log path |
 | `log.max_lines` | `500` | Log is trimmed to this many lines on rotation |
-| `watcher.event_interval_ms` | `200` | Poll interval for hook events |
-| `watcher.display_interval_ms` | `1000` | Poll interval for status bar refresh |
 | `notifications.sound.enabled` | `true` | Master switch for sound |
 | `notifications.sound.volume` | `0.7` | Volume (0.0–1.0) |
 | `notifications.sound.on_long_running` | `true` | Sound when prompt finishes above threshold |
@@ -257,7 +255,7 @@ via pathogen/vim-plug):
 
 ## Troubleshooting
 
-**Watcher is not starting**
+**Hooks are not firing**
 Check the log at `~/.local/share/claude-status/claude-status.log`. Ensure `jq` is installed
 and that the hooks script is executable (`chmod +x hooks/claude-hook.sh`).
 
@@ -279,8 +277,8 @@ Confirm the path in `~/.claude/settings.json` is correct and the script is execu
 Test manually: `echo '{"hook_event_name":"Stop","session_id":"test"}' | bash hooks/claude-hook.sh`.
 
 **Status bar shows nothing**
-Ensure a watcher process is running for your session. The hook dispatcher starts it
-automatically on the first hook event. Check `/tmp/claude-status-*.json` for state files.
+Check `/tmp/claude-status-*.json` for state files. The hook dispatcher creates one on the
+first hook event. Verify the hook is configured correctly in `~/.claude/settings.json`.
 
 ## License
 
