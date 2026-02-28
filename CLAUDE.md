@@ -41,10 +41,11 @@ bash install.sh                           # install OS deps
 
 ## Branch & PR Naming
 
-- Feature branches: `feat/issue#-short-kebab-desc`  (e.g. `feat/3-watcher-health-check`)
-- Bug branches:     `bug/issue#-short-kebab-desc`   (e.g. `bug/7-state-file-race`)
-- PRs must reference the issue they close: **"Closes #N"** in the PR body
-- Commits should reference issues: `refs #N` or `closes #N`
+- Feature branches:  `feat/issue#-short-kebab-desc`  (e.g. `feat/3-hook-dispatcher`)
+- Bug branches:      `bug/issue#-short-kebab-desc`   (e.g. `bug/7-state-file-race`)
+- Chore branches:    `chore/issue#-short-kebab-desc` (e.g. `chore/9-lint-scripts`)
+- Every branch must have an issue number — create one with `/add-issue` if needed.
+- PRs must reference the issue they close: **"Closes #N"** in the PR body.
 
 ## Versioning
 
@@ -60,9 +61,27 @@ version tag.
 
 ## Commit Style
 
+Format: `[{feat|bug|chore}/KEBAB-DESCRIPTION] short imperative summary`
+
+```
+[feat/hook-dispatcher] add single entry-point hook dispatcher
+
+Overview of what is changing and why, with context for the reader.
+
+Changes:
+- hooks/claude-hook.sh: new dispatcher reads hook_event_name from stdin
+- scripts/common.sh: source shared helpers
+
+Caveats:
+- depends on watcher (#2) for full lifecycle management
+
+closes #1
+```
+
 - No "Co-Authored-By: Claude" lines
-- Imperative mood, present tense ("add watcher health check", not "added")
-- Reference issues in commit messages: `refs #N` or `closes #N`
+- First line ≤ 72 characters; imperative mood, present tense
+- Body: overview paragraph + bulleted change list + caveats if relevant
+- Always include `refs #N` or `closes #N` — warn if missing
 - One logical change per commit
 
 ## Architecture

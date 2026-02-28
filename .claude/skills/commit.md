@@ -12,35 +12,69 @@ Before staging anything, check whether CHANGELOG.md has content under
 - The changelog entry must be committed in the same commit as the feature work —
   not as a separate "update changelog" commit.
 
+## Commit message format
+
+```
+[{feat|bug|chore}/KEBAB-DESCRIPTION] short description in imperative mood
+
+Overview paragraph: what is being changed and why, with enough context
+for someone reading the log to understand the change without diffing.
+
+Changes:
+- specific thing changed in file or module
+- another specific change, referencing the relevant code/concept
+- ...
+
+Caveats (omit section if none):
+- known dependency on issue #N before this is fully usable
+- outstanding edge case or known limitation
+- anything that will need follow-up
+
+refs #N      (work in progress — more commits coming for this issue)
+closes #N    (this commit finishes the issue)
+```
+
+**Rules for the subject line:**
+- Format must be `[type/kebab-description] imperative summary`
+- `type` is one of: `feat`, `bug`, `chore`
+- `KEBAB-DESCRIPTION` matches the branch name suffix (e.g. branch `feat/3-hook-dispatcher` → `[feat/hook-dispatcher]`)
+- Total first line ≤ 72 characters
+- No period at the end
+
 ## Steps
 
-1. Run `git status` and `git diff` (staged + unstaged) to understand what has changed.
+1. Run `git status` and `git diff` (staged + unstaged) to understand what changed.
 
 2. Verify CHANGELOG.md [Unreleased] has content (see above).
 
-3. Draft a commit message:
-   - Imperative mood, present tense: "add watcher health check", not "added"
-   - First line ≤ 72 characters
-   - Reference the issue: `refs #N` (work in progress) or `closes #N` (last commit
-     for this issue)
-   - Body optional but useful for non-obvious changes
+3. Draft the commit message following the format above.
 
-4. Show the staged file list and draft message to the user for confirmation.
+4. Warn if there is no `refs #N` or `closes #N` — every commit should correspond
+   to a GitHub issue. If no issue exists, prompt the user to create one first
+   with `/add-issue`.
 
-5. Stage specific files by name — never `git add -A` or `git add .` without review.
+5. Show the staged file list and draft message to the user for confirmation.
+
+6. Stage specific files by name — never `git add -A` or `git add .` without review.
    Always include CHANGELOG.md if it has been updated.
 
-6. Commit using a HEREDOC to preserve formatting:
+7. Commit using a HEREDOC to preserve formatting:
    ```
    git commit -m "$(cat <<'EOF'
-   your message here
+   [feat/hook-dispatcher] add single entry-point hook dispatcher
 
-   refs #N
+   Overview here.
+
+   Changes:
+   - hooks/claude-hook.sh: new dispatcher reads hook_event_name from stdin
+   - scripts/common.sh: source shared helpers
+
+   closes #1
    EOF
    )"
    ```
 
-7. Run `git status` after to confirm the working tree is clean.
+8. Run `git status` after to confirm the working tree is clean.
 
 ## Rules
 
