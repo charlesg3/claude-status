@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `hooks/claude-hook.sh` — Stop hook exiting non-zero (silent crash) when no long-running notification fired: `$fired && log_info` expanded `false` as a command (exit 1), triggering `set -e`; replaced with `[[ "$fired" == "true" ]] && ... || true`
+- `scripts/statusline.sh` — terminal width now read via `stty size </dev/tty` (TIOCGWINSZ) instead of `tput cols` which always returned 80 when stdin was a pipe; falls back to 120 (#35)
+- `scripts/statusline.sh` — `_visible_len` now counts supplementary-plane emoji (UTF-8 leading byte F0–F4) as 2 terminal columns; fixes right-side padding for 📁 🌿 💰 icons (#35)
+- `scripts/statusline.sh` — spacer subtracts 3-char right margin to avoid content being clipped by Claude's statusline renderer (#35)
+- `scripts/statusline.sh` — added debug log at `/tmp/claude-statusline.log` to aid diagnosis of rendering issues (#35)
 
 ## [0.1.0] - 2026-02-28
 
