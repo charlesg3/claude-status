@@ -25,7 +25,49 @@ if [[ "$(get_config 'statusline.enabled' 'true')" != "true" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Require STATE_FILE
+# Resolve STATE_FILE: explicit env var (test/tmux) or statusLine stdin mode
+#
+# When Claude calls us as statusLine.command it pipes live session JSON on
+# stdin and does NOT set STATE_FILE.  Detect that, derive the state file path
+# from the session_id, and patch context_pct / cost_usd back so other
+# renderers (e.g. the Neovim plugin's timer) can read them from STATE_FILE.
+# ---------------------------------------------------------------------------
+STDIN_CONTEXT_PCT=""
+STDIN_COST_USD=""
+
+if [[ -z "${STATE_FILE:-}" ]] && ! [ -t 0 ]; then
+  _STDIN_JSON="$(cat)"
+  _SESSION_ID="$(printf '%s' "$_STDIN_JSON" | jq -r '.session_id // empty')"
+
+  if [[ -n "$_SESSION_ID" ]]; then
+    STATE_FILE="$(get_config 'state_dir' '/tmp')/claude-status-${_SESSION_ID}.json"
+
+    # Extract live values from the session payload
+    STDIN_CONTEXT_PCT="$(printf '%s' "$_STDIN_JSON" \
+      | jq -r 'if .context_window.remaining_percentage != null
+               then (100 - .context_window.remaining_percentage | floor | tostring)
+               else empty end' 2>/dev/null)"
+    STDIN_COST_USD="$(printf '%s' "$_STDIN_JSON" \
+      | jq -r '.cost.total_cost_usd // empty' 2>/dev/null)"
+
+    # Patch STATE_FILE so other renderers can read cost/context (only source
+    # for these fields — hooks never receive them)
+    if [[ -f "$STATE_FILE" ]] && [[ -n "${STDIN_CONTEXT_PCT}${STDIN_COST_USD}" ]]; then
+      _patch_tmp="$(mktemp)"
+      jq \
+        --arg ctx  "$STDIN_CONTEXT_PCT" \
+        --arg cost "$STDIN_COST_USD" \
+        '(if $ctx  != "" then .context_pct = ($ctx  | tonumber) else . end) |
+         (if $cost != "" then .cost_usd    = ($cost | tonumber) else . end)' \
+        "$STATE_FILE" > "$_patch_tmp" \
+        && mv "$_patch_tmp" "$STATE_FILE" \
+        || rm -f "$_patch_tmp"
+    fi
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Require a usable STATE_FILE (hooks may not have run yet, or session ended)
 # ---------------------------------------------------------------------------
 if [[ -z "${STATE_FILE:-}" || ! -f "$STATE_FILE" ]]; then
   exit 0
@@ -79,6 +121,11 @@ GIT_MOD="$(    _field git_modified)"
 CONTEXT_PCT="$(_field context_pct)"
 COST_USD="$(   _field cost_usd)"
 DURATION="$(   _field duration_seconds)"
+
+# In statusLine mode, fresh stdin values are authoritative (STATE_FILE may
+# not have been patched yet if the file appeared between the patch and read)
+[[ -n "$STDIN_CONTEXT_PCT" ]] && CONTEXT_PCT="$STDIN_CONTEXT_PCT"
+[[ -n "$STDIN_COST_USD"    ]] && COST_USD="$STDIN_COST_USD"
 
 # ---------------------------------------------------------------------------
 # Component renderers

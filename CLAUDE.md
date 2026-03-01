@@ -154,6 +154,58 @@ When implementing an integration, add it as an optional `require()` in
   `~/.config/claude-status/config.json` (user overrides); 3) `config.json` in repo
   (shipped defaults).
 
+### Data flow and field sources
+
+| Field | Source |
+|---|---|
+| `state` | hooks: `SessionStart` (ready), `UserPromptSubmit` (working), `Stop` (ready) |
+| `directory` | hooks: cwd from each event payload |
+| `branch` | hooks: `git rev-parse --abbrev-ref HEAD` |
+| `git_staged` | hooks: `git diff --cached --numstat \| wc -l` |
+| `git_modified` | hooks: `git diff --numstat \| wc -l` |
+| `duration_seconds` | `Stop` hook: `now - prompt_start_epoch` |
+| `context_pct` | `statusLine` stdin: `100 - context_window.remaining_percentage` |
+| `cost_usd` | `statusLine` stdin: `cost.total_cost_usd` |
+
+`context_pct` and `cost_usd` are **not present in any hook payload**. They arrive
+exclusively via `statusLine.command` stdin. `scripts/statusline.sh` patches them
+back into STATE_FILE after each render so other renderers (e.g. the winbar timer)
+can read the latest values.
+
+### statusLine data flow
+
+Claude calls `statusLine.command` on every render, piping live session JSON on stdin:
+
+```json
+{
+  "session_id": "abc123",
+  "context_window": { "remaining_percentage": 30.0 },
+  "cost": { "total_cost_usd": 0.123 }
+}
+```
+
+`scripts/statusline.sh` detects stdin input (no `STATE_FILE` env var, stdin is a
+pipe), auto-locates STATE_FILE as `/tmp/claude-status-SESSION_ID.json`, computes
+`context_pct = floor(100 - remaining_percentage)`, patches both fields into
+STATE_FILE atomically, then renders the status line as normal.
+
+When `STATE_FILE` is set explicitly (test / tmux mode), stdin is ignored entirely.
+
+### Hook wiring (required events)
+
+Configure these five hook events to point at `hooks/claude-hook.sh`:
+
+| Event | Handler action |
+|---|---|
+| `SessionStart` | write_state: session_id, directory, branch, git info, model |
+| `UserPromptSubmit` | patch_state: state=working, prompt_start_epoch, git refresh |
+| `Notification` | OS/sound alert only; no state file change |
+| `Stop` | patch_state: state=ready, duration_seconds; fire long-running alerts |
+| `SessionEnd` | remove state file |
+
+`PreToolUse`, `PostToolUse`, and `SubagentStop` are not needed — the dispatcher
+ignores them, so wiring them just adds unnecessary overhead.
+
 ## Config System
 
 | File | Role |
@@ -215,6 +267,10 @@ nvim --headless -l tests/test-vim.lua
 Tests are in the `tests/` directory. Mock events are JSON payloads that replicate what
 Claude would send via stdin to the hook dispatcher. Headless Neovim tests load the
 plugin and exercise the Lua API without a GUI.
+
+## What to omit from public artifacts
+
+Do **not** mention `CLAUDE.md` in commits, CHANGELOG.md entries, PR descriptions, or GitHub issues. It is an internal AI guide, not a user-visible file. Treat it like an internal implementation note.
 
 ## Skills
 

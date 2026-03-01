@@ -40,17 +40,35 @@ run_scenario() {
     scenario="$(basename "$scenario_dir")"
     local state_file="$scenario_dir/state.json"
     local config_file="$scenario_dir/config.json"
+    local stdin_file="$scenario_dir/stdin.json"
 
     if [[ ! -f "$state_file" ]]; then
         skip "$scenario"
         skip=$(( skip + 1 )); return
     fi
 
-    local env_args=("STATE_FILE=$state_file")
-    [[ -f "$config_file" ]] && env_args+=("CONFIG_OVERRIDE=$config_file")
-
     local output exit_code=0
-    output=$(env "${env_args[@]}" bash "$STATUSLINE" 2>&1) || exit_code=$?
+
+    if [[ -f "$stdin_file" ]]; then
+        # stdin-mode scenario: simulate Claude's statusLine call (no STATE_FILE).
+        # Place the state file where statusline.sh will look for it based on session_id.
+        local session_id state_dir expected_state
+        session_id="$(jq -r '.session_id // "test-session"' "$stdin_file")"
+        state_dir="$(jq -r '.state_dir // "/tmp"' "$REPO_DIR/config.json" 2>/dev/null || echo /tmp)"
+        expected_state="${state_dir}/claude-status-${session_id}.json"
+        cp "$state_file" "$expected_state"
+
+        local env_args=("COLUMNS=${STATUSLINE_WIDTH:-120}")
+        [[ -f "$config_file" ]] && env_args+=("CONFIG_OVERRIDE=$config_file")
+
+        output=$(env "${env_args[@]}" bash "$STATUSLINE" < "$stdin_file" 2>&1) || exit_code=$?
+        rm -f "$expected_state"
+    else
+        local env_args=("COLUMNS=${STATUSLINE_WIDTH:-120}" "STATE_FILE=$state_file")
+        [[ -f "$config_file" ]] && env_args+=("CONFIG_OVERRIDE=$config_file")
+
+        output=$(env "${env_args[@]}" bash "$STATUSLINE" 2>&1) || exit_code=$?
+    fi
 
     if [[ $exit_code -eq 0 ]]; then
         ok "$scenario"
