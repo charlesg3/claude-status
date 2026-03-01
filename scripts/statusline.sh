@@ -131,7 +131,9 @@ GIT_STAGED="$( _field git_staged)"
 GIT_MOD="$(    _field git_modified)"
 CONTEXT_PCT="$(_field context_pct)"
 COST_USD="$(   _field cost_usd)"
-DURATION="$(   _field duration_seconds)"
+SESSION_START="$(_field session_start_epoch)"
+DURATION=""
+[[ -n "$SESSION_START" ]] && DURATION=$(( ${MOCK_NOW:-$(date +%s)} - SESSION_START ))
 
 # In statusLine mode, fresh stdin values are authoritative (STATE_FILE may
 # not have been patched yet if the file appeared between the patch and read)

@@ -7,8 +7,8 @@
   "git_modified": 1,
   "context_pct": 42,
   "cost_usd": 0.042,
-  "duration_seconds": 12,
   "prompt_start_epoch": 1700000000,
   "last_tool_name": "Bash",
-  "last_tool_exit_code": null
+  "last_tool_exit_code": null,
+  "session_start_epoch": 1772339988
 }
