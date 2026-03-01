@@ -98,7 +98,7 @@ _fire_long_running_notifications() {
     fi
   done
 
-  $fired && log_info "long_running notification fired (${duration}s)"
+  [[ "$fired" == "true" ]] && log_info "long_running notification fired (${duration}s)" || true
 }
 
 # ---------------------------------------------------------------------------

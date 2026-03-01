@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/test-statusline.sh` — `run_scenario` now handles stdin-mode scenarios (presence of `stdin.json` in the scenario dir); COLUMNS is passed explicitly in env args for both code paths (#35)
 - `dotfiles/install.sh` — claude-status hook wiring updated to register `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`, `SessionEnd` (replaces `PreToolUse`/`PostToolUse`/`SubagentStop`); sets `statusLine.command` to our `scripts/statusline.sh` when claude-status is present
 
+### Fixed
+- `hooks/claude-hook.sh` — Stop hook exiting non-zero (silent crash) when no long-running notification fired: `$fired && log_info` expanded `false` as a command (exit 1), triggering `set -e`; replaced with `[[ "$fired" == "true" ]] && ... || true`
+
 ## [0.1.0] - 2026-02-28
 
 ### Added
