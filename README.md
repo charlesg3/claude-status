@@ -36,7 +36,7 @@ Run `install.sh` to check and install OS dependencies automatically.
 
 ## Installation
 
-### Without Neovim (standalone)
+### Step 1 — Base installation (always required)
 
 ```sh
 git clone https://github.com/charlesg3/claude-status ~/src/claude-status
@@ -48,13 +48,19 @@ Add the hooks to `~/.claude/settings.json` (see [Configuring Claude Hooks](#conf
 
 Optionally edit `~/.config/claude-status/config.json` to override defaults.
 
-### With Neovim — vim-plug
+### Step 2 (optional) — Status bar or Neovim plugin
+
+After the base installation you can add a status bar, the Neovim plugin, or both.
+See [Status Bar Setup](#status-bar-setup) and [Neovim Plugin Configuration](#neovim-plugin-configuration).
+The Neovim plugin can be used instead of the status bar.
+
+**vim-plug**
 
 ```vim
 Plug 'charlesg3/claude-status', {'rtp': '.'}
 ```
 
-### With Neovim — lazy.nvim
+**lazy.nvim**
 
 ```lua
 {
@@ -67,7 +73,7 @@ Plug 'charlesg3/claude-status', {'rtp': '.'}
 }
 ```
 
-### With Neovim — packer.nvim
+**packer.nvim**
 
 ```lua
 use {
@@ -76,7 +82,7 @@ use {
 }
 ```
 
-### With Neovim — pathogen (submodule style)
+**pathogen (submodule style)**
 
 ```sh
 cd ~/.config/nvim  # or your nvim config root
@@ -148,12 +154,12 @@ feedback without being spammed by OS popups for quick tasks.
 
 ## Notification Events
 
-claude-status fires notifications on exactly two events:
+claude-status fires notifications on these events:
 
 | Event | When it fires |
 |---|---|
 | `long_running` | A prompt **completes** after running longer than the effective threshold. Set any channel's threshold to `0` to notify on every completion for that channel. Default threshold: 120 s. |
-| `error` | A tool call exits non-zero and Claude reports it as a failure. |
+| `permission_prompt` | Claude needs your permission before it can continue. |
 
 These events are intentionally minimal. The goal is to surface moments when Claude needs
 your attention, not to narrate every action. See the Configuration section above for
@@ -161,7 +167,7 @@ per-channel threshold overrides.
 
 ## Configuring Claude Hooks
 
-Add the following to `~/.claude/settings.json`. Every hook event points to the same
+Add the following to `~/.claude/settings.json`. All hook events point to the same
 dispatcher script, which inspects `hook_event_name` and dispatches accordingly.
 
 Adjust the path to match wherever you cloned the repo (the example uses `~/src/claude-status`).
@@ -169,17 +175,15 @@ Adjust the path to match wherever you cloned the repo (the example uses `~/src/c
 ```json
 {
   "hooks": {
-    "PreToolUse": [
+    "SessionStart": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
-    "PostToolUse": [
+    "UserPromptSubmit": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
@@ -187,7 +191,6 @@ Adjust the path to match wherever you cloned the repo (the example uses `~/src/c
     ],
     "Notification": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
@@ -195,15 +198,13 @@ Adjust the path to match wherever you cloned the repo (the example uses `~/src/c
     ],
     "Stop": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]
       }
     ],
-    "SubagentStop": [
+    "SessionEnd": [
       {
-        "matcher": "",
         "hooks": [
           { "type": "command", "command": "~/src/claude-status/hooks/claude-hook.sh" }
         ]

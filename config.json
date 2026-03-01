@@ -38,20 +38,10 @@
   "statusline": {
     "enabled": true,
     "layout": [
-      "state", "directory", "branch", "git_status", "last_status",
+      "state", "directory", "branch", "git_status",
       "spacer",
       "context", "cost", "duration"
     ],
-    "components": {
-      "state":       { "enabled": true, "script": "components/state.sh" },
-      "directory":   { "enabled": true, "script": "components/directory.sh" },
-      "branch":      { "enabled": true, "script": "components/branch.sh" },
-      "git_status":  { "enabled": true, "script": "components/git-status.sh" },
-      "last_status": { "enabled": true, "script": "components/last-status.sh" },
-      "context":     { "enabled": true, "script": "components/context.sh" },
-      "cost":        { "enabled": true, "script": "components/cost.sh" },
-      "duration":    { "enabled": true, "script": "components/duration.sh" }
-    },
     "icons": {
       "working":   "↻",
       "ready":     "●",
@@ -67,7 +57,7 @@
     "colors": {
       "working":       "#6FC1FF",
       "ready":         "#55B96D",
-      "error":         "#FF2C6D",
+      "error":         "#C91614",
       "warning":       "#FFB86C",
       "branch":        "#B1B9F5",
       "dim":           "#676B79",
