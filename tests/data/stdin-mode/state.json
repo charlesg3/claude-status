@@ -1,0 +1,9 @@
+{
+  "session_id": "test-stdin-session",
+  "state": "working",
+  "directory": "/home/user/my-project",
+  "branch": "feat/35-statusline-integration",
+  "git_staged": 1,
+  "git_modified": 2,
+  "prompt_start_epoch": 1700000000
+}

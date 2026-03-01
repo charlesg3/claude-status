@@ -1,0 +1,12 @@
+{
+  "session_id": "test-stdin-session",
+  "context_window": {
+    "remaining_percentage": 30.0
+  },
+  "cost": {
+    "total_cost_usd": 0.123
+  },
+  "workspace": {
+    "current_dir": "/home/user/my-project"
+  }
+}
