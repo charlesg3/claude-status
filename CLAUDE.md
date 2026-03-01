@@ -137,17 +137,16 @@ When implementing an integration, add it as an optional `require()` in
 ## Architecture
 
 - **Hook dispatcher pattern** — a single entry-point script reads `hook_event_name` from
-  stdin JSON and calls the appropriate handler function. Extra positional args are
-  forwarded as chained scripts.
+  stdin JSON and calls the appropriate handler. Handles: `SessionStart`,
+  `UserPromptSubmit`, `Notification`, `Stop`, `SessionEnd`. All other events are ignored.
 - **State files in /tmp** — each Claude session writes a JSON state file at
   `/tmp/claude-status-SESSION_ID.json`. The statusline reads this file.
   Writing is atomic (write to `.tmp`, then `mv`).
 - **Config merge strategy** — `scripts/lib/config.sh` reads `config.json` (repo
   defaults), then deep-merges `~/.config/claude-status/config.json` (user overrides)
-  using `jq * reduce`. User values win at every key.
-- **Nvim remote-expr bridge** — `scripts/lib/notify.sh` discovers the Neovim server
-  socket for the owning session and calls `nvim --server $socket --remote-expr` to post
-  messages without a persistent daemon.
+  using `jq *`. User values win at every key.
+- **Nvim remote-expr bridge** — the Lua plugin uses `nvim --server $socket --remote-expr`
+  to post notifications to the Neovim instance that owns the session.
 - **Winbar timer** — the Lua plugin uses `vim.loop.new_timer()` to drive the Neovim
   display refresh loop independently of hook events.
 - **Config precedence** — settings resolution order (highest wins): 1)
@@ -164,6 +163,16 @@ When implementing an integration, add it as an optional `require()` in
 
 The merge is performed with `jq`. Nested objects are merged one level deep; scalars and
 arrays are replaced by the user value.
+
+### Null-punning convention
+
+`get_config` always returns an **empty string** when a key is absent or JSON-null.
+Never check `[[ "$val" != "null" ]]` in calling code — just check `[[ -n "$val" ]]`.
+The function strips the literal string `"null"` defensively so callers never see it.
+
+JSON `false` is returned as the string `"false"` so that boolean config keys work
+correctly. jq's `// empty` operator treats `false` the same as `null` (swallows it),
+so `get_config` uses `if .key == null then empty else tostring end` internally instead.
 
 ## State Files
 

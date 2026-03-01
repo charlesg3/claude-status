@@ -43,10 +43,8 @@ run_scenario() {
 
     if [[ ! -f "$state_file" ]]; then
         skip "$scenario"
-        ((skip++)); return
+        skip=$(( skip + 1 )); return
     fi
-
-    header "$scenario"
 
     local env_args=("STATE_FILE=$state_file")
     [[ -f "$config_file" ]] && env_args+=("CONFIG_OVERRIDE=$config_file")
@@ -54,18 +52,18 @@ run_scenario() {
     local output exit_code=0
     output=$(env "${env_args[@]}" bash "$STATUSLINE" 2>&1) || exit_code=$?
 
-    if [[ -n "$output" ]]; then
-        printf "%s\n" "$output"
+    if [[ $exit_code -eq 0 ]]; then
+        ok "$scenario"
+        pass=$(( pass + 1 ))
     else
-        printf "  (no output)\n"
+        err "$scenario (exit $exit_code)"
+        fail=$(( fail + 1 ))
     fi
 
-    if [[ $exit_code -eq 0 ]]; then
-        ok "exit 0"
-        ((pass++))
+    if [[ -n "$output" ]]; then
+        printf "    %s\n" "$output"
     else
-        err "exit $exit_code"
-        ((fail++))
+        printf "    (no output)\n"
     fi
 }
 
