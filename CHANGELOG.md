@@ -15,8 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/test-statusline.sh` — `run_scenario` now handles stdin-mode scenarios (presence of `stdin.json` in the scenario dir); COLUMNS is passed explicitly in env args for both code paths (#35)
 - `dotfiles/install.sh` — claude-status hook wiring updated to register `SessionStart`, `UserPromptSubmit`, `Notification`, `Stop`, `SessionEnd` (replaces `PreToolUse`/`PostToolUse`/`SubagentStop`); sets `statusLine.command` to our `scripts/statusline.sh` when claude-status is present
 
+### Changed
+- `hooks/claude-hook.sh` — `SessionStart` now records `session_start_epoch`; `UserPromptSubmit` no longer deletes `duration_seconds` (#35)
+- `scripts/statusline.sh` — duration component now shows total session time (`now - session_start_epoch`), computed live on each render so it never disappears mid-session; supports `MOCK_NOW` env var for deterministic tests (#35)
+- `tests/test-statusline.sh` — exports `MOCK_NOW=1772340000` so duration is stable across runs (#35)
+- `tests/data/*/state.json` — replaced `duration_seconds` with `session_start_epoch` derived from `MOCK_NOW - duration` (#35)
+
 ### Fixed
 - `hooks/claude-hook.sh` — Stop hook exiting non-zero (silent crash) when no long-running notification fired: `$fired && log_info` expanded `false` as a command (exit 1), triggering `set -e`; replaced with `[[ "$fired" == "true" ]] && ... || true`
+- `scripts/statusline.sh` — terminal width now read via `stty size </dev/tty` (TIOCGWINSZ) instead of `tput cols` which always returned 80 when stdin was a pipe; falls back to 120 (#35)
+- `scripts/statusline.sh` — `_visible_len` now counts supplementary-plane emoji (UTF-8 leading byte F0–F4) as 2 terminal columns; fixes right-side padding for 📁 🌿 💰 icons (#35)
+- `scripts/statusline.sh` — spacer subtracts 3-char right margin to avoid content being clipped by Claude's statusline renderer (#35)
+- `scripts/statusline.sh` — added debug log at `/tmp/claude-statusline.log` to aid diagnosis of rendering issues (#35)
 
 ## [0.1.0] - 2026-02-28
 

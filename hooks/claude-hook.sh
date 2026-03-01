@@ -110,6 +110,9 @@ handle_session_start() {
   source=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // empty')
   model=$(printf '%s'  "$HOOK_INPUT" | jq -r '.model  // empty')
 
+  local now
+  now=$(date +%s)
+
   _git_info "$CWD"
 
   local new_state
@@ -121,15 +124,17 @@ handle_session_start() {
     --argjson git_modified "$GIT_MODIFIED" \
     --arg source        "$source" \
     --arg model         "$model" \
+    --argjson epoch     "$now" \
     '{
-      session_id:   $session_id,
-      state:        "ready",
-      directory:    $directory,
-      branch:       $branch,
-      git_staged:   $git_staged,
-      git_modified: $git_modified,
-      source:       $source,
-      model:        $model
+      session_id:          $session_id,
+      state:               "ready",
+      directory:           $directory,
+      branch:              $branch,
+      git_staged:          $git_staged,
+      git_modified:        $git_modified,
+      source:              $source,
+      model:               $model,
+      session_start_epoch: $epoch
     }')
 
   write_state "$SESSION_ID" "$new_state"
@@ -162,8 +167,7 @@ handle_user_prompt_submit() {
       | .branch             = $branch
       | .git_staged         = $staged
       | .git_modified       = $modified
-      | .prompt_start_epoch = $epoch
-      | del(.duration_seconds)')
+      | .prompt_start_epoch = $epoch')
 
   write_state "$SESSION_ID" "$updated"
   log_info "UserPromptSubmit state→working"

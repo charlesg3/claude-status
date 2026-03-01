@@ -26,6 +26,9 @@ source "$REPO_DIR/scripts/common.sh"
 # The statusline script reads COLUMNS (falls back to tput cols).
 export COLUMNS="${STATUSLINE_WIDTH:-120}"
 
+# Fix "now" so duration (now - session_start_epoch) is deterministic across runs.
+export MOCK_NOW=1772340000
+
 # ── Guard ─────────────────────────────────────────────────────────────────────
 if [[ ! -f "$STATUSLINE" ]]; then
     err "scripts/statusline.sh not yet implemented"

@@ -7,6 +7,6 @@
   "git_modified": 0,
   "context_pct": 78,
   "cost_usd": 4.82,
-  "duration_seconds": 5483,
-  "prompt_start_epoch": 1700010000
+  "prompt_start_epoch": 1700010000,
+  "session_start_epoch": 1772334517
 }

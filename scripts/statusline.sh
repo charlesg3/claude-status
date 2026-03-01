@@ -18,6 +18,12 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$PROJECT_ROOT/scripts/lib/config.sh"
 
 # ---------------------------------------------------------------------------
+# Debug log
+# ---------------------------------------------------------------------------
+_LOG=/tmp/claude-statusline.log
+_log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >> "$_LOG"; }
+
+# ---------------------------------------------------------------------------
 # Bail if statusline is disabled
 # ---------------------------------------------------------------------------
 if [[ "$(get_config 'statusline.enabled' 'true')" != "true" ]]; then
@@ -38,9 +44,11 @@ STDIN_COST_USD=""
 if [[ -z "${STATE_FILE:-}" ]] && ! [ -t 0 ]; then
   _STDIN_JSON="$(cat)"
   _SESSION_ID="$(printf '%s' "$_STDIN_JSON" | jq -r '.session_id // empty')"
+  _log "stdin mode: session_id=${_SESSION_ID:-<empty>}"
 
   if [[ -n "$_SESSION_ID" ]]; then
     STATE_FILE="$(get_config 'state_dir' '/tmp')/claude-status-${_SESSION_ID}.json"
+    _log "resolved STATE_FILE=$STATE_FILE exists=$([ -f "$STATE_FILE" ] && echo yes || echo no)"
 
     # Extract live values from the session payload
     STDIN_CONTEXT_PCT="$(printf '%s' "$_STDIN_JSON" \
@@ -70,13 +78,16 @@ fi
 # Require a usable STATE_FILE (hooks may not have run yet, or session ended)
 # ---------------------------------------------------------------------------
 if [[ -z "${STATE_FILE:-}" || ! -f "$STATE_FILE" ]]; then
+  _log "exit: no state file (STATE_FILE=${STATE_FILE:-<unset>})"
   exit 0
 fi
+_log "rendering from STATE_FILE=$STATE_FILE"
 
 # ---------------------------------------------------------------------------
 # Terminal width
 # ---------------------------------------------------------------------------
-TERM_WIDTH="${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}"
+TERM_WIDTH="${COLUMNS:-$(stty size </dev/tty 2>/dev/null | awk '{print $2}')}"
+TERM_WIDTH="${TERM_WIDTH:-120}"
 
 # ---------------------------------------------------------------------------
 # ANSI color helpers
@@ -120,7 +131,9 @@ GIT_STAGED="$( _field git_staged)"
 GIT_MOD="$(    _field git_modified)"
 CONTEXT_PCT="$(_field context_pct)"
 COST_USD="$(   _field cost_usd)"
-DURATION="$(   _field duration_seconds)"
+SESSION_START="$(_field session_start_epoch)"
+DURATION=""
+[[ -n "$SESSION_START" ]] && DURATION=$(( ${MOCK_NOW:-$(date +%s)} - SESSION_START ))
 
 # In statusLine mode, fresh stdin values are authoritative (STATE_FILE may
 # not have been patched yet if the file appeared between the patch and read)
@@ -198,7 +211,19 @@ comp_duration() {
 # _visible_len STRING — length of string after stripping ANSI escape codes
 # ---------------------------------------------------------------------------
 _visible_len() {
-  printf '%s' "$1" | sed 's/\x1b\[[0-9;]*m//g' | wc -m | tr -d ' '
+  local plain
+  plain="$(printf '%s' "$1" | sed 's/\x1b\[[0-9;]*m//g')"
+  local chars wide
+  chars=$(printf '%s' "$plain" | wc -m | tr -d ' ')
+  # Supplementary-plane emoji (📁 🌿 💰 etc.) have a 4-byte UTF-8 leading
+  # byte in range F0–F4 and occupy 2 terminal columns, not 1 code point.
+  wide=$(printf '%s' "$plain" | LC_ALL=C awk '{
+    for (i = 1; i <= length($0); i++) {
+      b = substr($0, i, 1)
+      if (b >= "\360" && b <= "\364") w++
+    }
+  } END { print w+0 }')
+  echo $(( chars + wide ))
 }
 
 # ---------------------------------------------------------------------------
@@ -249,9 +274,10 @@ if [[ -z "$RIGHT" ]]; then
 else
   LEFT_LEN="$(_visible_len "$LEFT")"
   RIGHT_LEN="$(_visible_len "$RIGHT")"
-  # 2 spaces minimum gap on each side of the spacer
-  SPACER_LEN=$(( TERM_WIDTH - LEFT_LEN - RIGHT_LEN - 2 ))
+  # 2 spaces gap + 3 char right margin (Claude clips the last few chars)
+  SPACER_LEN=$(( TERM_WIDTH - LEFT_LEN - RIGHT_LEN - 5 ))
   [[ $SPACER_LEN -lt 1 ]] && SPACER_LEN=1
   PADDING="$(printf '%*s' "$SPACER_LEN" '')"
+  _log "COLUMNS=${COLUMNS:-<unset>} TERM_WIDTH=$TERM_WIDTH LEFT_LEN=$LEFT_LEN RIGHT_LEN=$RIGHT_LEN SPACER_LEN=$SPACER_LEN"
   printf '%s%s%s\n' "$LEFT" "$PADDING" "$RIGHT"
 fi

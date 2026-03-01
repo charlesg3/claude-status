@@ -7,8 +7,8 @@
   "git_modified": 5,
   "context_pct": 91,
   "cost_usd": 1.24,
-  "duration_seconds": 183,
   "prompt_start_epoch": 1700000500,
   "last_tool_name": "Write",
-  "last_tool_exit_code": 0
+  "last_tool_exit_code": 0,
+  "session_start_epoch": 1772339817
 }
