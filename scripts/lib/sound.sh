@@ -2,7 +2,7 @@
 # scripts/lib/sound.sh — sound notification helpers
 #
 # SOURCE this file; do not execute it directly.
-# Requires config.sh to be sourced first.
+# Requires config.sh and notify.sh to be sourced first.
 #
 # Sound file resolution order for event EVENT:
 #   1. notifications.sound.path_overrides.EVENT  (per-event override)
@@ -54,6 +54,7 @@ play_sound() {
   local event="$1"
 
   [[ "$(get_config 'notifications.sound.enabled' 'true')" == "true" ]] || return 0
+  kitty_tab_active && return 0
 
   local sound_file
   sound_file=$(_resolve_sound_path "$event")
