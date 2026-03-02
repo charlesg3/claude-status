@@ -249,7 +249,7 @@ function M.statusline()
   local mode     = vim.fn.mode()
   local mode_hl  = (mode == "t") and "ClaudeStatusWorking" or "ClaudeStatusDim"
   local mode_chr = (mode == "t") and "I" or "N"
-  local indicator = "%#" .. mode_hl .. "#" .. mode_chr .. "%#Normal#"
+  local indicator = "%#" .. mode_hl .. "# " .. mode_chr .. "%#Normal#"
 
   return indicator .. (_render_cache[session_id] or "")
 end
