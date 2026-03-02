@@ -184,10 +184,6 @@ local function _update_win(win)
         pcall(vim.fn["airline#update_statusline_inactive"], range)
       end)
     end
-  elseif vim.bo[bufnr].filetype == "NvimTree" then
-    vim.api.nvim_win_set_var(win, "airline_disabled", 1)
-    vim.wo[win].statusline = "NvimTree"
-    vim.wo[win].fillchars = "eob: "
   else
     -- Only restore airline if this window previously had airline_disabled set
     -- (i.e. it was a Claude or managed window). Calling setlocal statusline< on
