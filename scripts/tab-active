@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Prints 1 if the current terminal tab is active (focused), 0 otherwise.
+
+if [[ -n "$KITTY_WINDOW_ID" ]]; then
+    active=$(kitty @ ls 2>/dev/null | jq --argjson wid "$KITTY_WINDOW_ID" '
+        .[].tabs[] | select(any(.windows[]; .id == $wid)) | .is_active
+    ')
+    [[ "$active" == "true" ]] && echo 1 || echo 0
+    exit 0
+fi
+
+if [[ -n "$TMUX_PANE" ]]; then
+    tmux display-message -p -t "$TMUX_PANE" '#{window_active}'
+    exit 0
+fi
+
+# Unknown/unsupported terminal — assume active
+echo 1
