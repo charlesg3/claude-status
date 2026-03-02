@@ -122,6 +122,21 @@ notify_vim() {
   nvim --server "$NVIM" --remote-expr "$1" &>/dev/null &
 }
 
+# ring_bell — send a terminal bell to the user's terminal.
+#
+# When Claude runs inside a Neovim terminal buffer, /dev/tty is Neovim's pty,
+# not Kitty's — writing \a there just hands the BEL to Neovim's libvterm and
+# it never reaches Kitty.  Instead, delegate to the Neovim plugin, which runs
+# in Neovim's own process context where /dev/tty IS Kitty's pty.
+# ClaudeStatusBell() respects visualbell / belloff before writing.
+ring_bell() {
+  if [[ -n "${NVIM:-}" ]]; then
+    notify_vim "ClaudeStatusBell()"
+    return
+  fi
+  printf '\a' > /dev/tty 2>/dev/null || true
+}
+
 log_info() {
   mkdir -p "$(dirname "$CLAUDE_STATUS_LOG")"
   _log_line "INFO" "$@"

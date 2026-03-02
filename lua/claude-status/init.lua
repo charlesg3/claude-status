@@ -160,14 +160,20 @@ local function _update_win(win)
   if session_id then
     vim.api.nvim_win_set_var(win, "airline_disabled", 1)
     vim.wo[win].statusline = _statusline_expr
+  elseif vim.bo[bufnr].filetype == "NvimTree" then
+    vim.api.nvim_win_set_var(win, "airline_disabled", 1)
+    vim.wo[win].statusline = "NvimTree"
+    vim.wo[win].fillchars = "eob: "
   else
-    pcall(vim.api.nvim_win_del_var, win, "airline_disabled")
-    -- Reset to global statusline (airline). Setting to "" would show a blank
-    -- bar; "setlocal statusline<" removes the local override so the global
-    -- value (managed by airline) takes effect again.
-    vim.api.nvim_win_call(win, function()
-      vim.cmd("setlocal statusline<")
-    end)
+    -- Only restore airline if this window previously had airline_disabled set
+    -- (i.e. it was a Claude or managed window). Calling setlocal statusline< on
+    -- every regular window on every WinEnter would wipe airline's statuslines.
+    local had_disabled = pcall(vim.api.nvim_win_del_var, win, "airline_disabled")
+    if had_disabled then
+      vim.api.nvim_win_call(win, function()
+        vim.cmd("setlocal statusline<")
+      end)
+    end
   end
 end
 
@@ -246,6 +252,25 @@ function M.statusline()
   local indicator = "%#" .. mode_hl .. "#" .. mode_chr .. "%#Normal#"
 
   return indicator .. (_render_cache[session_id] or "")
+end
+
+-- bell()
+-- Called via ClaudeStatusBell() remote-expr from the ring_bell() hook helper.
+-- Writes BEL directly to /dev/tty from Neovim's process context, where
+-- /dev/tty is Kitty's pty (not the terminal-buffer pty Claude uses).
+-- Respects visualbell and belloff so user preferences are honoured.
+function M.bell()
+  if vim.o.visualbell then return "" end
+  for _, v in ipairs(vim.split(vim.o.belloff or "", ",", { trimempty = true })) do
+    if v == "all" then return "" end
+  end
+  local f = io.open("/dev/tty", "w")
+  if f then
+    f:write("\a")
+    f:flush()
+    f:close()
+  end
+  return ""
 end
 
 -- winbar() kept as an alias so existing callers don't break.

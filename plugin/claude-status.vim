@@ -22,6 +22,10 @@ function! ClaudeStatusUnregister(session_id) abort
   return luaeval("require('claude-status').unregister(_A)", a:session_id)
 endfunction
 
+function! ClaudeStatusBell() abort
+  return luaeval("require('claude-status').bell()")
+endfunction
+
 " ClaudeStatusIsClaudeWin([winnr]) -> session_id string (truthy) or v:null (falsy)
 function! ClaudeStatusIsClaudeWin(...) abort
   return luaeval("require('claude-status').get_session_for_win(_A)",

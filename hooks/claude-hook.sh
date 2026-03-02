@@ -96,12 +96,6 @@ _git_info() {
   fi
 }
 
-# ring_bell — send a terminal bell to the controlling terminal.
-# Uses /dev/tty so it works even when stdout/stderr are redirected.
-ring_bell() {
-  printf '\a' > /dev/tty 2>/dev/null || true
-}
-
 # _should_notify_channel CHANNEL — returns 0 if the channel is enabled
 _should_notify_channel() {
   local channel="$1"
