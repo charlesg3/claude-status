@@ -160,6 +160,30 @@ local function _update_win(win)
   if session_id then
     vim.api.nvim_win_set_var(win, "airline_disabled", 1)
     vim.wo[win].statusline = _statusline_expr
+    -- airline#update_statusline() bails early when the active window has
+    -- airline_disabled=1 (set above), so other windows never receive their
+    -- inactive statuslines (w:airline_active stays 1, mode indicator stays live).
+    -- Drive the inactive update manually: collect all other windows and call
+    -- airline#update_statusline_inactive() from a non-disabled proxy window so
+    -- airline's own stl_disabled(winnr()) guard passes.
+    local range, proxy = {}, nil
+    for _, w in ipairs(vim.api.nvim_list_wins()) do
+      if w ~= win then
+        local nr = vim.fn.win_id2win(w)
+        if nr > 0 then
+          table.insert(range, nr)
+          if not proxy then
+            local ok, disabled = pcall(vim.api.nvim_win_get_var, w, "airline_disabled")
+            if not ok or not disabled then proxy = w end
+          end
+        end
+      end
+    end
+    if proxy then
+      vim.api.nvim_win_call(proxy, function()
+        pcall(vim.fn["airline#update_statusline_inactive"], range)
+      end)
+    end
   elseif vim.bo[bufnr].filetype == "NvimTree" then
     vim.api.nvim_win_set_var(win, "airline_disabled", 1)
     vim.wo[win].statusline = "NvimTree"
