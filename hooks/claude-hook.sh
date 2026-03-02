@@ -102,6 +102,14 @@ _should_notify_channel() {
   [[ "$(get_config "notifications.${channel}.enabled" "true")" == "true" ]]
 }
 
+# _fire_ready_notifications
+# Fires notifications on every Stop event, regardless of duration.
+# Currently rings the terminal bell; extend here to add OS/sound on_ready later.
+_fire_ready_notifications() {
+  ring_bell
+  log_info "ready notification fired"
+}
+
 # _fire_long_running_notifications DURATION
 # Fires OS + sound notifications for each channel whose threshold was exceeded.
 _fire_long_running_notifications() {
@@ -249,7 +257,7 @@ handle_notification() {
   # Surface attention-needed notifications via OS alert + bell
   case "$notification_type" in
     idle_prompt|permission_prompt)
-      ring_bell
+      _fire_ready_notifications
       if _should_notify_channel "os"; then
         notify_os "${title:-Claude}" "${message:-Claude needs your attention}"
       fi
@@ -307,7 +315,7 @@ handle_stop() {
     write_state "$SESSION_ID" "$new_state"
   fi
 
-  ring_bell
+  _fire_ready_notifications
   _fire_long_running_notifications "$duration"
   log_info "Stop duration=${duration}s state→ready"
 }
