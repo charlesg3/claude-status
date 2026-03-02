@@ -7,8 +7,8 @@
 # Functions:
 #   kitty_tab_active                        — returns 0 if running in Kitty with the active tab
 #   notify_os TITLE MESSAGE                 — send a native desktop notification
-#   cancel_focus_watcher SESSION_ID         — kill any pending focus watcher for a session
-#   notify_escalating SESSION_ID TITLE MSG  — bell now; OS+sound after focus timeout
+#   cancel_notification_timer SESSION_ID    — kill any pending notification timer for a session
+#   notify_all SESSION_ID TITLE MSG         — fire all enabled channels per their thresholds
 
 _NOTIFY_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -56,79 +56,82 @@ notify_os() {
 }
 
 # ---------------------------------------------------------------------------
-# cancel_focus_watcher SESSION_ID
-# Sends SIGTERM to any running focus watcher for SESSION_ID and removes the
-# PID file.  Safe to call even if no watcher is running (no-op).
+# cancel_notification_timer SESSION_ID
+# Sends SIGTERM to any running notification timer for SESSION_ID and removes
+# the PID file.  Safe to call even if no timer is running (no-op).
 # ---------------------------------------------------------------------------
-cancel_focus_watcher() {
+cancel_notification_timer() {
   local session_id="$1"
-  local pid_file="/tmp/claude-focus-watcher-${session_id}.pid"
+  local pid_file="/tmp/claude-notification-timer-${session_id}.pid"
   [[ -f "$pid_file" ]] || return 0
 
   local pid
   pid=$(cat "$pid_file" 2>/dev/null || true)
 
   if [[ -n "$pid" ]] && [[ "$pid" =~ ^[0-9]+$ ]]; then
-    # Sanity-check: only kill if the process looks like our watcher
-    local comm
-    comm=$(ps -p "$pid" -o comm= 2>/dev/null | tr -d ' ' || true)
-    if [[ "$comm" == *"focus-watcher"* ]] || [[ "$comm" == "bash" ]]; then
-      kill -TERM "$pid" 2>/dev/null || true
-    fi
+    kill -TERM "$pid" 2>/dev/null || true
   fi
 
   rm -f "$pid_file"
 }
 
 # ---------------------------------------------------------------------------
-# notify_escalating SESSION_ID TITLE MESSAGE
-# Rings the bell immediately (caller's responsibility) then starts a
-# background focus-watcher that fires OS+sound after focus_timeout_seconds
-# if the user has not returned to the Kitty tab.
-#
-# Falls back to an immediate notify_os + play_sound when:
-#   - focus_timeout_seconds is 0
-#   - Kitty remote control is not available
-#   - focus-watcher.sh is not executable
+# _fire_channel CHANNEL TITLE MESSAGE
+# Fire a single notification channel immediately.
 # ---------------------------------------------------------------------------
-notify_escalating() {
+_fire_channel() {
+  local channel="$1" title="$2" message="$3"
+  case "$channel" in
+    terminal) ring_bell ;;
+    sound)    play_sound ;;
+    os)       notify_os "$title" "$message" ;;
+    vim)      ;; # not yet wired
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# notify_all SESSION_ID TITLE MESSAGE
+# Fire all enabled notification channels according to their configured
+# notification_threshold values.
+#
+# Channels with notification_threshold=0 fire immediately (in the calling
+# process).  Channels with notification_threshold>0 are handled by a single
+# background notification-timer.sh process (one PID, cancellable via
+# cancel_notification_timer).
+#
+# No-ops entirely if the Kitty tab is currently active.
+# ---------------------------------------------------------------------------
+notify_all() {
   local session_id="$1"
   local title="${2:-Claude}"
   local message="${3:-Claude needs your attention}"
 
-  local timeout
-  timeout=$(get_config 'long_running.focus_timeout_seconds' '30')
-
-  # timeout=0: immediate notification, bypass watcher
-  if [[ "$timeout" -eq 0 ]]; then
-    notify_os "$title" "$message"
-    play_sound "long_running"
-    return 0
-  fi
-
-  # Non-Kitty or remote control unavailable: immediate fallback
-  if [[ -z "${KITTY_LISTEN_ON:-}" ]]; then
-    notify_os "$title" "$message"
-    play_sound "long_running"
-    return 0
-  fi
-
-  # Already focused — bell is enough, no escalation needed
+  # If the user is already watching the terminal, skip all notifications
   kitty_tab_active && return 0
 
-  # Cancel any previous watcher before spawning a new one
-  cancel_focus_watcher "$session_id"
+  local has_delayed=false
 
-  local watcher="${_NOTIFY_LIB_DIR}/focus-watcher.sh"
-  if [[ ! -x "$watcher" ]]; then
-    # Watcher missing: immediate fallback
-    notify_os "$title" "$message"
-    play_sound "long_running"
-    return 0
+  for channel in terminal sound os vim; do
+    local enabled threshold
+    enabled=$(get_config "notifications.${channel}.enabled" "false")
+    threshold=$(get_config "notifications.${channel}.notification_threshold" "0")
+
+    [[ "$enabled" == "true" ]] || continue
+
+    if [[ "${threshold:-0}" -eq 0 ]]; then
+      _fire_channel "$channel" "$title" "$message"
+    else
+      has_delayed=true
+    fi
+  done
+
+  if [[ "$has_delayed" == "true" ]]; then
+    cancel_notification_timer "$session_id"
+    local timer="${_NOTIFY_LIB_DIR}/notification-timer.sh"
+    if [[ -x "$timer" ]]; then
+      "$timer" "$session_id" "$title" "$message" \
+        </dev/null >/dev/null 2>/dev/null &
+      disown 2>/dev/null || true
+    fi
   fi
-
-  # Spawn background watcher; detach so hook exits immediately
-  "$watcher" "$session_id" "$timeout" "$title" "$message" \
-    </dev/null >/dev/null 2>/dev/null &
-  disown 2>/dev/null || true
 }

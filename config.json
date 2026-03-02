@@ -7,34 +7,24 @@
     "max_lines": 500
   },
   "notifications": {
+    "terminal": {
+      "enabled": true,
+      "notification_threshold": 0
+    },
     "sound": {
       "enabled": true,
       "volume": 0.7,
       "path": null,
-      "path_overrides": {
-        "long_running": null,
-        "error": null
-      },
-      "on_long_running": true,
-      "on_error": false,
-      "long_running_threshold": null
+      "notification_threshold": 30
     },
     "os": {
       "enabled": true,
-      "on_long_running": true,
-      "on_error": true,
-      "long_running_threshold": null
+      "notification_threshold": 30
     },
     "vim": {
       "enabled": true,
-      "on_long_running": true,
-      "on_error": true,
-      "long_running_threshold": null
+      "notification_threshold": 0
     }
-  },
-  "long_running": {
-    "threshold_seconds": 120,
-    "focus_timeout_seconds": 30
   },
   "statusline": {
     "enabled": true,

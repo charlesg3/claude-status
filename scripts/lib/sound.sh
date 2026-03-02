@@ -4,26 +4,21 @@
 # SOURCE this file; do not execute it directly.
 # Requires config.sh and notify.sh to be sourced first.
 #
-# Sound file resolution order for event EVENT:
-#   1. notifications.sound.path_overrides.EVENT  (per-event override)
-#   2. notifications.sound.path                  (global sound file/dir)
-#   3. If path is a directory → pick a random file from it
-#   4. No sound if path is unset or the file is missing
+# Sound file resolution:
+#   1. notifications.sound.path  (global sound file or directory)
+#   2. If path is a directory → pick a random file from it
+#   3. No sound if path is unset or the file is missing
 #
 # Functions:
-#   play_sound EVENT   — play the sound for the given event (long_running|error)
+#   play_sound   — play the configured notification sound
 
 # ---------------------------------------------------------------------------
-# _resolve_sound_path EVENT
+# _resolve_sound_path
 # Prints the path to the sound file to play, or empty string if none.
 # ---------------------------------------------------------------------------
 _resolve_sound_path() {
-  local event="$1"
   local path
-
-  # Per-event override takes precedence
-  path=$(get_config "notifications.sound.path_overrides.${event}")
-  [[ -z "$path" ]] && path=$(get_config "notifications.sound.path")
+  path=$(get_config "notifications.sound.path")
   [[ -z "$path" ]] && return 0
 
   # Expand ~ manually (not expanded inside double-quoted variables)
@@ -45,19 +40,16 @@ _resolve_sound_path() {
 }
 
 # ---------------------------------------------------------------------------
-# play_sound EVENT
-# Plays the sound for the given event. Silently skips if no tool is available
-# or no sound file is configured.
-# EVENT: long_running | error
+# play_sound
+# Plays the configured notification sound. Silently skips if no tool is
+# available, no sound file is configured, or the Kitty tab is active.
 # ---------------------------------------------------------------------------
 play_sound() {
-  local event="$1"
-
   [[ "$(get_config 'notifications.sound.enabled' 'true')" == "true" ]] || return 0
   kitty_tab_active && return 0
 
   local sound_file
-  sound_file=$(_resolve_sound_path "$event")
+  sound_file=$(_resolve_sound_path)
   [[ -n "$sound_file" ]] || return 0
 
   local volume

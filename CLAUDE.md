@@ -96,18 +96,24 @@ user-visible change — but keep descriptions high-level and benefit-focused.
 Notifications should be **rare, high-signal, and non-intrusive**. The goal is to
 surface moments when Claude needs your attention — not to narrate every tool call.
 
-There are exactly two notification events:
+There is exactly one notification trigger: **`notification`** — fired when a prompt
+completes (`Stop`) or Claude needs permission (`Notification`/`permission_prompt`).
 
-- **`long_running`** — fired when a prompt **completes** after running longer than the
-  effective threshold. The threshold is resolved per-channel: use the channel's
-  `long_running_threshold` if set, otherwise fall back to `long_running.threshold_seconds`
-  (global default: 120 s). Setting any threshold to `0` fires on every completion for
-  that channel. This lets vim notifications fire sooner than OS notifications.
-- **`error`** — fired when a tool call exits non-zero and Claude reports it.
+When a notification fires, each channel is evaluated in order (`terminal`, `sound`, `os`,
+`vim`). A channel is skipped if `enabled` is false. Otherwise:
+
+- `notification_threshold: 0` — fires immediately in the hook process (e.g. terminal bell,
+  Neovim alert).
+- `notification_threshold: N` — deferred to a single background timer process that sleeps
+  N seconds, then fires the channel (after re-checking whether the Kitty tab is active).
+
+Only one background timer PID runs per session at a time. Cancellation (on
+`UserPromptSubmit`, `PreToolUse`, `SessionEnd`) sends SIGTERM to that process, which
+interrupts the sleep via `wait` and exits cleanly.
 
 Do not add notifications for routine events (every tool use, every file read, status
-updates, etc.). If a new event is proposed, ask: "would this become noise within a day
-of normal use?" If yes, it should not be a default-on notification.
+updates, etc.). If a new notification channel or trigger is proposed, ask: "would this
+become noise within a day of normal use?" If yes, it should not be a default-on event.
 
 ## Dependencies
 
@@ -200,8 +206,8 @@ Configure these five hook events to point at `hooks/claude-hook.sh`:
 |---|---|
 | `SessionStart` | write_state: session_id, directory, branch, git info, model, claude_pid |
 | `UserPromptSubmit` | patch_state: state=working, prompt_start_epoch, git refresh |
-| `Notification` | OS/sound alert only; no state file change |
-| `Stop` | patch_state: state=ready, duration_seconds; fire long-running alerts |
+| `Notification` | fire ready notifications (permission_prompt / idle_prompt); update state to "waiting" |
+| `Stop` | patch_state: state=ready, duration_seconds; fire ready notifications |
 | `SessionEnd` | remove state file |
 
 `PreToolUse`, `PostToolUse`, and `SubagentStop` are not needed — the dispatcher

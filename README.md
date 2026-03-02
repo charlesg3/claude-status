@@ -18,7 +18,7 @@ it as you want.
 - **Optional status bar** — shows session state, git context, cost, and context usage;
   component-based so you enable only what you want; works with tmux or shell prompts
 - **Highly configurable** — every channel can be tuned independently; per-channel
-  thresholds let Neovim alert sooner than OS notifications; user config is never
+  thresholds control when each fires (instantly or after a delay); user config is never
   overwritten by updates
 
 ## Requirements
@@ -116,20 +116,16 @@ arrays and scalars are replaced wholesale.
 | `state_dir` | `"/tmp"` | Where session state files are written |
 | `log.file` | `"~/.local/share/claude-status/claude-status.log"` | Log path |
 | `log.max_lines` | `500` | Log is trimmed to this many lines on rotation |
-| `notifications.sound.enabled` | `true` | Master switch for sound |
+| `notifications.terminal.enabled` | `true` | Enable/disable terminal bell |
+| `notifications.terminal.notification_threshold` | `0` | Seconds to wait before firing; `0` = immediate |
+| `notifications.sound.enabled` | `true` | Enable/disable sound |
 | `notifications.sound.volume` | `0.7` | Volume (0.0–1.0) |
-| `notifications.sound.on_long_running` | `true` | Sound when prompt finishes above threshold |
-| `notifications.sound.on_error` | `true` | Sound on error |
-| `notifications.sound.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
-| `notifications.os.enabled` | `true` | Master switch for OS notifications |
-| `notifications.os.on_long_running` | `true` | OS notify when prompt finishes above threshold |
-| `notifications.os.on_error` | `true` | OS notify on error |
-| `notifications.os.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
-| `notifications.vim.enabled` | `true` | Master switch for Vim notifications |
-| `notifications.vim.on_long_running` | `true` | Vim notify when prompt finishes above threshold |
-| `notifications.vim.on_error` | `true` | Vim notify on error |
-| `notifications.vim.long_running_threshold` | `null` | Per-channel threshold override; `null` uses global |
-| `long_running.threshold_seconds` | `120` | Global default: seconds after which a completed prompt notifies; `0` = always |
+| `notifications.sound.path` | `null` | Sound file or directory to pick a random file from |
+| `notifications.sound.notification_threshold` | `30` | Seconds to wait before firing; `0` = immediate |
+| `notifications.os.enabled` | `true` | Enable/disable OS notifications |
+| `notifications.os.notification_threshold` | `30` | Seconds to wait before firing; `0` = immediate |
+| `notifications.vim.enabled` | `true` | Enable/disable Vim notifications |
+| `notifications.vim.notification_threshold` | `0` | Seconds to wait before firing; `0` = immediate |
 | `statusline.enabled` | `true` | Master switch for the status bar; disable to use notifications only |
 | `statusline.components.*` | (all enabled) | Toggle individual status bar components |
 | `statusline.icons.*` | (see config.json) | Unicode icons used in the status bar |
@@ -139,31 +135,30 @@ arrays and scalars are replaced wholesale.
 
 ```json
 {
-  "long_running": { "threshold_seconds": 120 },
   "notifications": {
     "sound": { "enabled": false },
-    "os":    { "long_running_threshold": 120 },
-    "vim":   { "long_running_threshold": 30 }
+    "os":    { "notification_threshold": 60 },
+    "vim":   { "notification_threshold": 0 }
   }
 }
 ```
 
-This disables sound entirely, uses the global 120 s threshold for OS notifications, but
-notifies Neovim after only 30 s — useful when you are in the editor and want earlier
-feedback without being spammed by OS popups for quick tasks.
+This disables sound entirely, delays OS notifications to 60 s, and fires the Neovim
+alert immediately — useful when you are in the editor and want instant feedback without
+being spammed by OS popups for quick tasks.
 
 ## Notification Events
 
-claude-status fires notifications on these events:
+claude-status fires notifications on two occasions: when a prompt finishes (`Stop`) and
+when Claude needs your permission (`Notification`/permission_prompt).
 
-| Event | When it fires |
-|---|---|
-| `long_running` | A prompt **completes** after running longer than the effective threshold. Set any channel's threshold to `0` to notify on every completion for that channel. Default threshold: 120 s. |
-| `permission_prompt` | Claude needs your permission before it can continue. |
+When either fires, each enabled channel is evaluated in turn. Channels with
+`notification_threshold: 0` fire immediately (e.g. terminal bell). Channels with a
+non-zero threshold are handled by a single background timer; they fire after that many
+seconds unless the session receives a new prompt or the Kitty tab becomes active first.
 
-These events are intentionally minimal. The goal is to surface moments when Claude needs
-your attention, not to narrate every action. See the Configuration section above for
-per-channel threshold overrides.
+If the Kitty tab is already active when the notification fires, all channels are
+suppressed — you are already watching the terminal.
 
 ## Configuring Claude Hooks
 

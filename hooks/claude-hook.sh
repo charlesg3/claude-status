@@ -11,7 +11,7 @@
 #   SessionStart      — initialize state file for this session
 #   UserPromptSubmit  — mark session as working, record prompt start time
 #   Notification      — surface idle/permission prompts to the user
-#   Stop              — mark session as ready, fire long-running notification
+#   Stop              — mark session as ready, fire ready notifications
 #   SessionEnd        — clean up state file
 
 set -euo pipefail
@@ -96,21 +96,20 @@ _git_info() {
   fi
 }
 
-# _cancel_focus_watcher
-# Cancel any pending focus watcher for the current session.
-_cancel_focus_watcher() {
-  cancel_focus_watcher "$SESSION_ID"
+# _cancel_notification_timer
+# Cancel any pending notification timer for the current session.
+_cancel_notification_timer() {
+  cancel_notification_timer "$SESSION_ID"
 }
 
 # _fire_ready_notifications TITLE MESSAGE
-# Rings the bell immediately then starts the progressive escalation via
-# notify_escalating: if the user doesn't return to the Kitty tab within
-# focus_timeout_seconds, fires OS notification + sound.
+# Fire all enabled notification channels per their configured thresholds.
+# Immediate channels (threshold=0) fire now; delayed channels are handled
+# by a single background timer process.
 _fire_ready_notifications() {
   local title="${1:-Claude}"
   local message="${2:-Claude needs your attention}"
-  ring_bell
-  notify_escalating "$SESSION_ID" "$title" "$message"
+  notify_all "$SESSION_ID" "$title" "$message"
   log_info "ready notification fired"
 }
 
@@ -211,7 +210,7 @@ handle_user_prompt_submit() {
       | .prompt_start_epoch = $epoch')
 
   write_state "$SESSION_ID" "$updated"
-  _cancel_focus_watcher
+  _cancel_notification_timer
   log_info "UserPromptSubmit state→working"
 }
 
@@ -297,12 +296,12 @@ handle_stop() {
 }
 
 handle_pre_tool_use() {
-  # Claude is actively running — cancel any pending focus watcher
-  _cancel_focus_watcher
+  # Claude is actively running — cancel any pending notification timer
+  _cancel_notification_timer
 }
 
 handle_session_end() {
-  _cancel_focus_watcher
+  _cancel_notification_timer
   _notify_vim_session_end "$SESSION_ID"
   local state_file
   state_file="$(state_file_path "$SESSION_ID")"

@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `scripts/lib/notification-timer.sh` — new background timer that replaces `focus-watcher.sh`; sleeps until each channel's `notification_threshold`, then fires; cancelled cleanly via SIGTERM (interrupts `wait` immediately); one PID per session
+- `notifications.terminal` channel — terminal bell; fires immediately (threshold=0) on every notification event
+
+### Changed
+- `config.json` — notifications restructured: removed `long_running` top-level key; removed `on_long_running`, `on_error`, `long_running_threshold`, `path_overrides` per-channel fields; replaced with `notification_threshold` (seconds); added `terminal` channel; defaults: terminal=0, sound=30, os=30, vim=0
+- `scripts/lib/notify.sh` — replaced `notify_escalating`/`cancel_focus_watcher` with `notify_all`/`cancel_notification_timer`; `notify_all` loops channels, fires threshold=0 channels inline, spawns one timer for the rest
+- `scripts/lib/sound.sh` — removed event argument from `play_sound`; removed `path_overrides` lookup; reads `notifications.sound.path` directly
+- `scripts/lib/config.sh` — removed `get_threshold` helper (no longer needed)
+- `hooks/claude-hook.sh` — `_fire_ready_notifications` now calls `notify_all` (no separate `ring_bell` call); `_cancel_focus_watcher` renamed to `_cancel_notification_timer`
+
+### Removed
+- `scripts/lib/focus-watcher.sh` — replaced by `notification-timer.sh` (simpler: no polling, just sleep + SIGTERM-interruptible `wait`)
+
+### Added
 - `scripts/statusline.sh` — `statusLine` stdin mode: detects when Claude calls the script as `statusLine.command` (no `STATE_FILE` env var, stdin is a pipe), reads live session JSON, computes `context_pct = floor(100 - remaining_percentage)` and extracts `cost_usd`, patches STATE_FILE atomically so other renderers stay current, then renders as normal (#35)
 - `tests/data/stdin-mode/` — test scenario exercising the `statusLine` stdin code path with `stdin.json` alongside `state.json` (#35)
 

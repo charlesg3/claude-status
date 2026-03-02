@@ -12,8 +12,6 @@
 #
 # Functions:
 #   get_config KEY [DEFAULT]   — print value for a dotted jq path, or DEFAULT
-#   get_threshold CHANNEL      — resolve effective long_running threshold for a
-#                                channel (channel override or global default)
 #
 # Environment:
 #   CONFIG_OVERRIDE   — path to an alternate user config (used by tests)
@@ -68,7 +66,6 @@ _build_config() {
 # Flattening uses jq leaf_paths to walk every non-object leaf in the tree.
 # Path segments are joined with underscores to form valid env var names:
 #   statusline.icons.branch  →  CLAUDE_CONFIG_statusline_icons_branch=🌿
-#   long_running.threshold   →  CLAUDE_CONFIG_long_running_threshold=120
 #
 # Arrays (e.g. statusline.layout) are expanded to indexed keys:
 #   statusline.layout[0]  →  CLAUDE_CONFIG_statusline_layout_0=state
@@ -110,7 +107,7 @@ _flatten_config() {
 #
 # Examples:
 #   get_config 'log.file'
-#   get_config 'long_running.threshold_seconds' '120'
+#   get_config 'notifications.os.notification_threshold' '30'
 # ---------------------------------------------------------------------------
 get_config() {
   local key="$1"
@@ -155,25 +152,3 @@ get_icon() {
   get_config "statusline.icons.${1}" "${2:-}"
 }
 
-# ---------------------------------------------------------------------------
-# get_threshold CHANNEL
-#
-# Resolves the effective long_running threshold for the named channel.
-# Returns the channel-specific override if set (non-null), otherwise the
-# global long_running.threshold_seconds.
-#
-# CHANNEL: one of  sound  os  vim
-# ---------------------------------------------------------------------------
-get_threshold() {
-  local channel="$1"
-  local channel_threshold global_threshold
-
-  channel_threshold=$(get_config "notifications.${channel}.long_running_threshold" "")
-  global_threshold=$(get_config "long_running.threshold_seconds" "120")
-
-  if [[ -n "$channel_threshold" && "$channel_threshold" != "null" ]]; then
-    printf '%s' "$channel_threshold"
-  else
-    printf '%s' "$global_threshold"
-  fi
-}
