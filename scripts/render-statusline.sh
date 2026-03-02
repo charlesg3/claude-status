@@ -109,9 +109,7 @@ RIGHT_RAW="$(_render_section "${RIGHT_PARTS[@]+"${RIGHT_PARTS[@]}"}")"
 # ansi: tokens → ANSI escapes; spacer gap computed from terminal width.
 # ---------------------------------------------------------------------------
 if [[ "$FORMAT" == "vim" ]]; then
-  output="$LEFT_RAW"
-  [[ -n "$RIGHT_RAW" ]] && output+="[[spacer]]$RIGHT_RAW"
-  format_vim "$output"
+  format_vim "[[/]]  ${LEFT_RAW}[[spacer]]${RIGHT_RAW}  "
   printf '\n'
 else
   LEFT="$(format_ansi "$LEFT_RAW")"

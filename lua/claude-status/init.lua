@@ -4,35 +4,171 @@
 -- Architecture:
 --   sessions.lua  — terminal buffer ↔ Claude session mapping  (loaded now)
 --   state.lua     — state file reading / caching              (TODO)
---   render.lua    — winbar / statusline component system      (TODO)
 --
 -- External callers (hooks via nvim --server --remote-expr) use the Vimscript
 -- wrappers defined in plugin/claude-status.vim, which delegate here.
 --
--- Setup:
---   require('claude-status').setup(opts)   -- call from your init.lua (optional)
+-- Setup (optional, call from your init.lua):
+--   require('claude-status').setup({ interval = 1000 })
 --
--- Query from statusline / winbar:
---   require('claude-status').winbar()      -- returns formatted winbar string
---   require('claude-status').get_session_for_win([winnr])  -- session_id or nil
+-- Requires Neovim 0.10+ (vim.system).
 
 local M = {}
 
 local sessions = require("claude-status.sessions")
 
 -- ---------------------------------------------------------------------------
--- Setup
+-- Plugin root — derived from this file's path.
+-- init.lua lives at lua/claude-status/init.lua; root is three levels up.
+-- ---------------------------------------------------------------------------
+local _plugin_root = vim.fn.fnamemodify(
+  debug.getinfo(1, "S").source:sub(2), ":h:h:h")
+local _render_script = _plugin_root .. "/scripts/render-statusline.sh"
+
+-- ---------------------------------------------------------------------------
+-- Config
 -- ---------------------------------------------------------------------------
 
--- Default config; overridden by setup() or vim.g.claude_status_* variables.
--- Extended as state.lua / render.lua are added.
-M._config = {}
+M._config = {
+  interval = 1000, -- statusline refresh interval in ms
+}
 
--- setup(opts)
--- Call once from your Neovim config to customise behaviour.
--- opts are merged into M._config; keys will be documented as the plugin grows.
 function M.setup(opts)
   M._config = vim.tbl_deep_extend("force", M._config, opts or {})
+end
+
+-- ---------------------------------------------------------------------------
+-- Highlight groups
+--
+-- Names are derived generically from statusline.colors keys in config.json:
+--   working → ClaudeStatusWorking
+--   dim     → ClaudeStatusDim
+--   etc.
+--
+-- Colors come from the merged config (repo defaults + user overrides) so
+-- there are no magic numbers here — edit config.json to change them.
+-- Re-applied after ColorScheme events so they survive theme switches.
+-- ---------------------------------------------------------------------------
+
+-- _load_colors() -> { token -> "#rrggbb" }
+-- Reads statusline.colors from the merged config (repo defaults overlaid with
+-- ~/.config/claude-status/config.json user overrides).
+local function _load_colors()
+  local function read_json(path)
+    if vim.fn.filereadable(path) == 0 then return nil end
+    local ok, decoded = pcall(
+      vim.fn.json_decode,
+      table.concat(vim.fn.readfile(path), "\n")
+    )
+    return ok and decoded or nil
+  end
+
+  local cfg = read_json(_plugin_root .. "/config.json") or {}
+  local user = read_json(vim.fn.expand("~/.config/claude-status/config.json"))
+  if user then
+    cfg = vim.tbl_deep_extend("force", cfg, user)
+  end
+
+  return (cfg.statusline or {}).colors or {}
+end
+
+local function _setup_highlights()
+  -- Use Normal's background on all groups so the statusline has a uniform
+  -- background — without this, grouped spans use StatusLine's bg while
+  -- %#Normal# resets use Normal's bg, causing visible banding.
+  local normal_bg = vim.api.nvim_get_hl(0, { name = "Normal" }).bg
+
+  for token, hex in pairs(_load_colors()) do
+    if hex and hex ~= "" then
+      -- Capitalise first letter: "working" → "ClaudeStatusWorking"
+      local group = "ClaudeStatus" .. token:sub(1, 1):upper() .. token:sub(2)
+      vim.api.nvim_set_hl(0, group, { fg = hex, bg = normal_bg })
+    end
+  end
+end
+
+-- ---------------------------------------------------------------------------
+-- Render cache and refresh timer
+--
+-- _render_cache: { session_id -> rendered_string }
+-- One shared timer drives periodic refreshes for all active sessions.
+-- The timer starts on the first register() and stops when no sessions remain.
+-- ---------------------------------------------------------------------------
+
+local _render_cache = {}
+local _timer = nil
+
+-- _refresh_session(session_id)
+-- Runs render-statusline.sh asynchronously for one session, updates the cache,
+-- and triggers a statusline redraw on completion.
+local function _refresh_session(session_id)
+  vim.system(
+    { _render_script, "vim" },
+    { env = { SESSION_ID = session_id } },
+    function(result)
+      if result.code == 0 then
+        -- strip trailing newline the shell script appends
+        local s = (result.stdout or ""):gsub("\n$", "")
+        _render_cache[session_id] = s
+        vim.schedule(function()
+          vim.cmd("redrawstatus!")
+        end)
+      end
+    end
+  )
+end
+
+local function _start_timer()
+  if _timer then return end
+  local uv = vim.uv or vim.loop
+  _timer = uv.new_timer()
+  _timer:start(
+    M._config.interval,
+    M._config.interval,
+    vim.schedule_wrap(function()
+      local seen = {}
+      for _, session_id in pairs(sessions._buf_sessions) do
+        if not seen[session_id] then
+          seen[session_id] = true
+          _refresh_session(session_id)
+        end
+      end
+    end)
+  )
+end
+
+local function _stop_timer()
+  if not _timer then return end
+  _timer:stop()
+  _timer:close()
+  _timer = nil
+end
+
+-- ---------------------------------------------------------------------------
+-- Window statusline management
+--
+-- For Claude terminal windows: disable airline and install our statusline.
+-- For all other windows: restore airline and the default statusline.
+-- ---------------------------------------------------------------------------
+
+local _statusline_expr = "%{%v:lua.require('claude-status').statusline()%}"
+
+local function _update_win(win)
+  win = win or vim.api.nvim_get_current_win()
+  local bufnr = vim.api.nvim_win_get_buf(win)
+  local session_id = sessions.get_session(bufnr)
+  if session_id then
+    vim.api.nvim_win_set_var(win, "airline_disabled", 1)
+    vim.wo[win].statusline = _statusline_expr
+  else
+    pcall(vim.api.nvim_win_del_var, win, "airline_disabled")
+    -- Reset to global statusline (airline). Setting to "" would show a blank
+    -- bar; "setlocal statusline<" removes the local override so the global
+    -- value (managed by airline) takes effect again.
+    vim.api.nvim_win_call(win, function()
+      vim.cmd("setlocal statusline<")
+    end)
+  end
 end
 
 -- ---------------------------------------------------------------------------
@@ -40,22 +176,47 @@ end
 -- ---------------------------------------------------------------------------
 
 -- register(session_id, claude_pid)
--- Called by the SessionStart hook. Links the session to its terminal buffer.
+-- Called by the SessionStart hook. Links the session to its terminal buffer,
+-- installs the custom statusline, starts the refresh timer, and renders once.
 function M.register(session_id, claude_pid)
   sessions.register(session_id, claude_pid)
+  local bufnr = sessions.get_bufnr(session_id)
+  if bufnr then
+    for _, win in ipairs(vim.fn.win_findbuf(bufnr)) do
+      _update_win(win)
+    end
+  end
+  _start_timer()
+  _refresh_session(session_id)
   return "" -- remote-expr requires a return value
 end
 
 -- unregister(session_id)
--- Called by the SessionEnd hook. Removes the session mapping.
+-- Called by the SessionEnd hook. Restores airline and clears cached content.
 function M.unregister(session_id)
+  local bufnr = sessions.get_bufnr(session_id) -- capture before unregistering
   sessions.unregister(session_id)
+  _render_cache[session_id] = nil
+  if not next(sessions._buf_sessions) then
+    _stop_timer()
+  end
+  -- Schedule the window reset so it runs after the remote-expr call returns.
+  -- Airline needs a proper event-loop cycle to notice the change.
+  vim.schedule(function()
+    if bufnr then
+      for _, win in ipairs(vim.fn.win_findbuf(bufnr)) do
+        _update_win(win)
+      end
+    end
+    pcall(vim.cmd, "AirlineRefresh")
+    vim.cmd("redrawstatus!")
+  end)
   return ""
 end
 
 -- get_session_for_win([winnr]) -> session_id or nil
 -- Returns the Claude session_id for the buffer visible in the given window.
--- winnr defaults to the current window.
+-- winnr defaults to the current window (0).
 function M.get_session_for_win(winnr)
   local win = (winnr and winnr ~= 0)
     and vim.fn.win_getid(winnr)
@@ -65,26 +226,58 @@ function M.get_session_for_win(winnr)
 end
 
 -- ---------------------------------------------------------------------------
--- Statusline / winbar
--- Stubs that will delegate to render.lua once that module is implemented.
+-- Statusline
 -- ---------------------------------------------------------------------------
 
--- winbar() -> string
--- Returns the formatted winbar string for the current window.
--- Intended for use in: set winbar=%{%v:lua.require('claude-status').winbar()%}
-function M.winbar()
-  -- TODO: delegate to render.lua; read state via state.lua
-  return ""
+-- statusline() -> string
+-- Returns the formatted statusline string for the current window's session.
+-- Called from the local statusline expression set by _update_win().
+--
+-- The mode indicator is evaluated at draw time (not cached) so it updates
+-- immediately on mode changes. 't' = terminal mode (typing) → I, else → N.
+function M.statusline()
+  local bufnr = vim.api.nvim_win_get_buf(0)
+  local session_id = sessions.get_session(bufnr)
+  if not session_id then return "" end
+
+  local mode     = vim.fn.mode()
+  local mode_hl  = (mode == "t") and "ClaudeStatusWorking" or "ClaudeStatusDim"
+  local mode_chr = (mode == "t") and "I" or "N"
+  local indicator = "%#" .. mode_hl .. "#" .. mode_chr .. "%#Normal#"
+
+  return indicator .. (_render_cache[session_id] or "")
 end
+
+-- winbar() kept as an alias so existing callers don't break.
+M.winbar = M.statusline
 
 -- ---------------------------------------------------------------------------
 -- Autocmds
 -- ---------------------------------------------------------------------------
 
+-- Re-install our statusline when switching into a Claude window.
+vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+  callback = function() _update_win() end,
+})
+
 vim.api.nvim_create_autocmd("BufDelete", {
   callback = function(ev)
+    local session_id = sessions.get_session(ev.buf)
     sessions.on_buf_delete(ev.buf)
+    if session_id then
+      _render_cache[session_id] = nil
+    end
+    if not next(sessions._buf_sessions) then
+      _stop_timer()
+    end
   end,
 })
+
+-- Re-apply highlights after any colour scheme change (themes reset them).
+vim.api.nvim_create_autocmd("ColorScheme", {
+  callback = _setup_highlights,
+})
+
+_setup_highlights()
 
 return M
