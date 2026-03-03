@@ -23,12 +23,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$PROJECT_ROOT/scripts/lib/config.sh"
 
 # ---------------------------------------------------------------------------
-# Debug log
-# ---------------------------------------------------------------------------
-_LOG=/tmp/claude-statusline.log
-_log() { printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >> "$_LOG"; }
-
-# ---------------------------------------------------------------------------
 # Bail if statusline is disabled
 # ---------------------------------------------------------------------------
 if [[ "$(get_config 'statusline.enabled' 'true')" != "true" ]]; then
@@ -49,11 +43,8 @@ STDIN_COST_USD=""
 if [[ -z "${STATE_FILE:-}" ]] && ! [ -t 0 ]; then
   _STDIN_JSON="$(cat)"
   _SESSION_ID="$(printf '%s' "$_STDIN_JSON" | jq -r '.session_id // empty')"
-  _log "stdin mode: session_id=${_SESSION_ID:-<empty>}"
-
   if [[ -n "$_SESSION_ID" ]]; then
     STATE_FILE="$(get_config 'state_dir' '/tmp')/claude-status-${_SESSION_ID}.json"
-    _log "resolved STATE_FILE=$STATE_FILE exists=$([ -f "$STATE_FILE" ] && echo yes || echo no)"
 
     # Extract live values from the session payload
     STDIN_CONTEXT_PCT="$(printf '%s' "$_STDIN_JSON" \
@@ -83,17 +74,14 @@ fi
 # Require a usable STATE_FILE (hooks may not have run yet, or session ended)
 # ---------------------------------------------------------------------------
 if [[ -z "${STATE_FILE:-}" || ! -f "$STATE_FILE" ]]; then
-  _log "exit: no state file (STATE_FILE=${STATE_FILE:-<unset>})"
   exit 0
 fi
-_log "rendering from STATE_FILE=$STATE_FILE"
 
 # ---------------------------------------------------------------------------
 # Extract SESSION_ID from the resolved state file.
 # ---------------------------------------------------------------------------
 SESSION_ID="$(jq -r '.session_id // empty' "$STATE_FILE")"
 if [[ -z "$SESSION_ID" ]]; then
-  _log "exit: no session_id in $STATE_FILE"
   exit 0
 fi
 
