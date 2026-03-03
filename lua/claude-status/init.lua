@@ -158,10 +158,12 @@ local function _refresh_session(session_id)
       if result.code == 0 then
         -- strip trailing newline the shell script appends
         local s = (result.stdout or ""):gsub("\n$", "")
-        _render_cache[session_id] = s
-        vim.schedule(function()
-          vim.cmd("redrawstatus!")
-        end)
+        if s ~= _render_cache[session_id] then
+          _render_cache[session_id] = s
+          vim.schedule(function()
+            vim.cmd("redrawstatus!")
+          end)
+        end
       end
     end
   )
