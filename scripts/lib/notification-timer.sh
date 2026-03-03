@@ -74,33 +74,51 @@ unset IFS
 
 # ---------------------------------------------------------------------------
 # Fire each channel at its configured threshold.
-# Uses sleep + wait so SIGTERM can interrupt cleanly between firings.
+# Sleeps in short polling chunks (see _POLL_INTERVAL) so SIGTERM can interrupt
+# cleanly and so we can detect Kitty tab focus events mid-wait.
 # ---------------------------------------------------------------------------
+# How often (seconds) to poll for Kitty tab focus while waiting between channels.
+_POLL_INTERVAL=3
+
+# True if the Kitty tab was active at any point during our waits or at fire time.
+# Used by skip_kitty_active channels: a brief visit to the tab is enough to
+# suppress the notification — the user presumably saw the response.
+kitty_seen_active=false
+
 elapsed=0
 for entry in "${sorted[@]}"; do
   threshold="${entry%%:*}"
   channel="${entry#*:}"
 
   to_sleep=$(( threshold - elapsed ))
-  if [[ $to_sleep -gt 0 ]]; then
-    sleep "$to_sleep" &
+
+  # Sleep in _POLL_INTERVAL chunks so we can track Kitty focus mid-wait.
+  remaining=$to_sleep
+  while [[ $remaining -gt 0 ]]; do
+    chunk=$(( remaining < _POLL_INTERVAL ? remaining : _POLL_INTERVAL ))
+    sleep "$chunk" &
     SLEEP_PID=$!
     wait $SLEEP_PID || true
     SLEEP_PID=""
-  fi
+    remaining=$(( remaining - chunk ))
+    kitty_tab_active && kitty_seen_active=true || true
+  done
+
   elapsed=$threshold
 
-  # Re-check focus state at time of firing — user may have switched away
-  local kitty_is_active=false nvim_is_active=false
-  kitty_tab_active && kitty_is_active=true
+  # One final focus check at fire time to catch the case where the user
+  # switched in just as we woke up.
+  kitty_tab_active && kitty_seen_active=true || true
+
+  local nvim_is_active=false
   nvim_active "$SESSION_ID" && nvim_is_active=true
 
   local skip_kitty skip_nvim
   skip_kitty=$(get_config "notifications.${channel}.skip_kitty_active" "false")
   skip_nvim=$(get_config "notifications.${channel}.skip_nvim_active" "false")
 
-  if [[ "$skip_kitty" == "true" && "$kitty_is_active" == "true" ]]; then
-    log_info "notification-timer: kitty active at ${elapsed}s — skipping ${channel}"
+  if [[ "$skip_kitty" == "true" && "$kitty_seen_active" == "true" ]]; then
+    log_info "notification-timer: kitty was active — skipping ${channel}"
     continue
   fi
   if [[ "$skip_nvim" == "true" && "$nvim_is_active" == "true" ]]; then
