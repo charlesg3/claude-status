@@ -37,6 +37,10 @@
   },
   "statusline": {
     "enabled": true,
+    "context": {
+      "warning_threshold": 65,
+      "error_threshold": 75
+    },
     "layout": [
       "state", "directory", "branch", "git_status", "session_id",
       "spacer",

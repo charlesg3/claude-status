@@ -348,6 +348,9 @@ end
 -- winbar() kept as an alias so existing callers don't break.
 M.winbar = M.statusline
 
+-- Exposed for testing only.
+M._update_nvim_active = _update_nvim_active
+
 -- ---------------------------------------------------------------------------
 -- Autocmds
 -- ---------------------------------------------------------------------------

@@ -5,8 +5,8 @@
 #   bash scripts/run-tests.sh              # run all tests
 #   bash scripts/run-tests.sh --no-vim    # all tests except headless nvim (used by git hook)
 #   bash scripts/run-tests.sh --statusline # status bar tests only
+#   bash scripts/run-tests.sh --hooks      # hook state transition tests only
 #   bash scripts/run-tests.sh --vim        # headless nvim tests only
-#   bash scripts/run-tests.sh --mock       # mock event smoke tests only
 #   bash scripts/run-tests.sh --syntax     # bash/json syntax check only
 #
 # The git pre-commit hook runs: bash scripts/run-tests.sh --no-vim
@@ -94,43 +94,25 @@ run_statusline() {
 }
 
 # ---------------------------------------------------------------------------
-# mock — smoke-test each known mock event through the hook dispatcher
+# hooks — test hook dispatcher state transitions
 # ---------------------------------------------------------------------------
-run_mock() {
-  _header "Mock event smoke tests"
-  local mock_script="$PROJECT_ROOT/tests/mock-event.sh"
-  local hook="$PROJECT_ROOT/hooks/claude-hook.sh"
+run_hooks() {
+  _header "Hook state transition tests"
+  local script="$PROJECT_ROOT/tests/test-hooks.sh"
 
-  if [[ ! -f "$mock_script" ]]; then
-    _record_skip "tests/mock-event.sh not found"
+  if [[ ! -f "$script" ]]; then
+    _record_skip "tests/test-hooks.sh not found"
     return 0
   fi
 
-  if [[ ! -f "$hook" ]]; then
-    _record_skip "hooks/claude-hook.sh not found"
-    return 0
+  if bash "$script"; then
+    _record_pass "test-hooks.sh"
+  else
+    _record_fail "test-hooks.sh"
+    return 1
   fi
-
-  local events
-  mapfile -t events < <(bash "$mock_script" --list 2>/dev/null || true)
-
-  if [[ ${#events[@]} -eq 0 ]]; then
-    _record_skip "no mock events defined"
-    return 0
-  fi
-
-  local failed=0
-  for event in "${events[@]}"; do
-    if bash "$mock_script" "$event" 2>/dev/null; then
-      _record_pass "mock: $event"
-    else
-      _record_fail "mock: $event"
-      failed=1
-    fi
-  done
-
-  return $failed
 }
+
 
 # ---------------------------------------------------------------------------
 # vim — headless nvim plugin tests
@@ -177,19 +159,19 @@ main() {
   local run_all=true
   local do_syntax=false
   local do_statusline=false
+  local do_hooks=false
   local do_vim=true      # included in "all" by default
-  local do_mock=false
   local only_one=false   # set when user picks a specific suite
 
   for arg in "$@"; do
     case "$arg" in
       --syntax)     run_all=false; only_one=true; do_syntax=true ;;
       --statusline) run_all=false; only_one=true; do_statusline=true ;;
+      --hooks)      run_all=false; only_one=true; do_hooks=true ;;
       --vim)        run_all=false; only_one=true; do_vim=true ;;
-      --mock)       run_all=false; only_one=true; do_mock=true ;;
       --no-vim)     do_vim=false ;;   # run all suites except the slow nvim test
       -h|--help)
-        printf 'Usage: %s [--syntax] [--statusline] [--vim] [--mock] [--no-vim]\n' \
+        printf 'Usage: %s [--syntax] [--statusline] [--hooks] [--vim] [--no-vim]\n' \
           "$(basename "$0")"
         exit 0
         ;;
@@ -204,7 +186,7 @@ main() {
 
   if $run_all || $do_syntax;     then run_syntax     || exit_code=1; fi
   if $run_all || $do_statusline; then run_statusline  || exit_code=1; fi
-  if $run_all || $do_mock;       then run_mock        || exit_code=1; fi
+  if $run_all || $do_hooks;      then run_hooks       || exit_code=1; fi
   if { $run_all || $do_vim; } && $do_vim; then run_vim || exit_code=1; fi
 
   print_summary

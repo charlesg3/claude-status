@@ -27,7 +27,6 @@ when they've switched away from its window.
 | `plugin/claude-status.vim` | Neovim plugin entry point; exposes `ClaudeStatusRegister/Unregister` |
 | `install.sh` | OS dependency detection and setup |
 | `tests/test-statusline.sh` | Unit tests for status bar output |
-| `tests/mock-event.sh` | Fire synthetic hook events for manual testing |
 | `tests/test-vim.lua` | Headless Neovim tests for the Lua plugin |
 | `CHANGELOG.md` | Keepachangelog format; updated on every PR merge |
 | `CLAUDE.md` | This file |
@@ -261,22 +260,16 @@ for display.
 ## Testing
 
 ```sh
-# Status bar unit tests
-bash tests/test-statusline.sh
+# Full suite
+bash scripts/run-tests.sh
 
-# List available mock events
-bash tests/mock-event.sh --list
-
-# Fire a specific mock event
-bash tests/mock-event.sh Stop
-
-# Headless Neovim plugin tests
-nvim --headless -l tests/test-vim.lua
+# Individual suites
+bash scripts/run-tests.sh --syntax      # bash + JSON syntax checks
+bash scripts/run-tests.sh --statusline  # status bar rendering
+bash scripts/run-tests.sh --hooks       # hook dispatcher state transitions
+bash scripts/run-tests.sh --vim         # headless Neovim plugin tests
+bash scripts/run-tests.sh --no-vim      # everything except headless nvim (used by git hook)
 ```
-
-Tests are in the `tests/` directory. Mock events are JSON payloads that replicate what
-Claude would send via stdin to the hook dispatcher. Headless Neovim tests load the
-plugin and exercise the Lua API without a GUI.
 
 ## What to omit from public artifacts
 
