@@ -6,7 +6,16 @@ comp_state() {
   state="$(read_state_field state)"
   case "$state" in
     working) printf '[[working]]%s working[[/]]' "$(get_icon 'working')" ;;
-    ready)   printf '[[ready]]%s ready[[/]]'     "$(get_icon 'ready')"   ;;
+    ready)
+      local duration
+      duration="$(read_state_field duration_seconds)"
+      if [[ -n "$duration" && "$duration" -gt 0 ]]; then
+        printf '[[ready]]%s ready[[/]] [[dim]](%ss)[[/]]' "$(get_icon 'ready')" "$duration"
+      else
+        printf '[[ready]]%s ready[[/]]' "$(get_icon 'ready')"
+      fi
+      ;;
+    waiting) printf '[[ready]]%s waiting[[/]]'   "$(get_icon 'ready')"   ;;
     *)       printf '[[dim]]%s[[/]]' "${state:-?}" ;;
   esac
 }

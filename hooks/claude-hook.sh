@@ -296,8 +296,17 @@ handle_stop() {
 }
 
 handle_pre_tool_use() {
-  # Claude is actively running — cancel any pending notification timer
+  # Claude is actively running — cancel any pending notification timer and
+  # flip state back to working (e.g. after user approves a permission prompt)
   _cancel_notification_timer
+  local state_file
+  state_file="$(state_file_path "$SESSION_ID")"
+  if [[ -f "$state_file" ]]; then
+    local updated
+    updated=$(jq '.state = "working"' "$state_file")
+    write_state "$SESSION_ID" "$updated"
+  fi
+  log_info "PreToolUse state→working"
 }
 
 handle_session_end() {
