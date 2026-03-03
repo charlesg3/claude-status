@@ -57,6 +57,18 @@ assert_file() {
   fi
 }
 
+# assert_no_file NAME PATH
+assert_no_file() {
+  local name="$1" path="$2"
+  if [[ ! -f "$path" ]]; then
+    ok "$name"
+    pass=$(( pass + 1 ))
+  else
+    err "$name (file still exists: $path)"
+    fail=$(( fail + 1 ))
+  fi
+}
+
 # fire JSON — pipe a hook payload into the dispatcher (NVIM unset so
 # notify_vim is a no-op; MOCK_NOW fixes date +%s for determinism)
 fire() {
@@ -164,8 +176,7 @@ fire "{
   \"cwd\": \"/tmp\"
 }"
 
-assert_file "state file still present after SessionEnd" "$STATE_FILE"
-assert "state = exited" "exited" "$(field "$STATE_FILE" state)"
+assert_no_file "state file removed after SessionEnd" "$STATE_FILE"
 
 # ---------------------------------------------------------------------------
 # compact SessionStart preserves working state

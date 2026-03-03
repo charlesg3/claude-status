@@ -314,12 +314,8 @@ handle_session_end() {
   _notify_vim_session_end "$SESSION_ID"
   local state_file
   state_file="$(state_file_path "$SESSION_ID")"
-  if [[ -f "$state_file" ]]; then
-    local updated
-    updated=$(jq '.state = "exited" | del(.claude_pid)' "$state_file")
-    write_state "$SESSION_ID" "$updated"
-  fi
-  log_info "SessionEnd session=$SESSION_ID state→exited"
+  rm -f "$state_file"
+  log_info "SessionEnd session=$SESSION_ID state file removed"
 }
 
 # ---------------------------------------------------------------------------
