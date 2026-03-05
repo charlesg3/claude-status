@@ -245,6 +245,12 @@ local function _update_win(win)
     if had_disabled then
       vim.api.nvim_win_call(win, function()
         vim.cmd("setlocal statusline<")
+        -- Clear airline's cached mode string so the next render sees a mode
+        -- change (''=>'normal') and fires AirlineModeChanged. Without this,
+        -- if mode was already 'normal' when Claude started, check_mode sees
+        -- no change, skips AirlineModeChanged, and airline_b_to_airline_term
+        -- keeps the dark palette default (#202020) instead of our grey pin.
+        vim.cmd("unlet! w:airline_lastmode")
       end)
     end
   end
