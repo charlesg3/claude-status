@@ -25,13 +25,13 @@
       "enabled": true,
       "notification_threshold": 30,
       "skip_kitty_active": true,
-      "skip_nvim_active": false
+      "skip_nvim_active": true
     },
     "nvim": {
       "enabled": true,
       "notification_threshold": 15,
       "skip_kitty_active": false,
-      "skip_nvim_active": false,
+      "skip_nvim_active": true,
       "notification": "luaeval('vim.notify(\"Claude is ready for input.\", vim.log.levels.INFO, {title = \"Claude [%SESSION_ID%]\"})')"
     }
   },
